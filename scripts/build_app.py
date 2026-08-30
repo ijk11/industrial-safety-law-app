@@ -251,7 +251,112 @@ def _row(acc, shape):
 
 
 
-def split_table(text):
+# ---------------- 접힌 줄 되돌리기 ----------------
+# 접힌 자리에 공백이 있었는지는 데이터에 없다. 찍어서 이으면 띄어쓰기가 대량으로 틀리므로
+# (표본 대조 결과 근거 없는 추정의 정답률은 61%뿐이었다) 근거가 있는 자리만 잇는다.
+
+# 새 항목이 시작하는 줄. '다)' 처럼 '…제외한다)' 의 꼬리와 헷갈리는 모양은 넣지 않는다.
+MARK = re.compile(r"^\s*(?:[○◦●▪□■※]|[0-9]+\s*\.|[가-힣]\s*\.\s|\([0-9]+\)|[-–—]\s|비고)")
+# 홀로 쓰이는 낱말 — 앞뒤로 반드시 띄어 쓴다.
+NEXT_WORD = re.compile(r"^(?:및|또는|각|기타|해당|다만)(?![가-힣])|^(?:등|중)(?:[의은는을를과와에도만,.)]|으로|$)")
+PREV_WORD = re.compile(r"(?:^|\s)(?:및|또는|등|중|각|기타|해당)$")
+# 붙여 쓰는 것이 문법으로 정해진 자리
+NO_SPACE_BEFORE = ")]}」』〉》,.·ㆍ;:%"
+NO_SPACE_AFTER = "([{「『〈《"
+TAIL = re.compile(r"[0-9A-Za-z가-힣]+$")
+HEAD = re.compile(r"^[0-9A-Za-z가-힣]+")
+# 법령 인용은 한 낱말이다 — 제29 + 조, 제 + 29 처럼 끊긴 자리는 붙인다
+CITE_L = re.compile(r"(?:제\s*)?\d+$")
+CITE_R = re.compile(r"^(?:조|항|호|목|절|장|편|관|류|종)(?![가-힣])|^의\s*\d")
+
+
+class Corpus:
+    """조문 본문 — 강제 줄바꿈이 없는 온전한 문장이라 띄어쓰기의 근거가 된다."""
+
+    def __init__(self, text):
+        self.text = text
+
+    def decide(self, left, right):
+        """끊긴 자리의 앞뒤 낱말을 떼어 내 조문에서 찾는다.
+        문장부호가 섞이면 못 찾으므로 글자만 남긴다."""
+        m = TAIL.search(left)
+        n2 = HEAD.match(right)
+        if not m or not n2:
+            return None
+        a, b = m.group()[-6:], n2.group()[:6]
+        for i in range(len(a), 0, -1):
+            for j in range(len(b), 0, -1):
+                if i + j < 4:
+                    continue
+                x, y = a[-i:], b[:j]
+                stuck = x + y in self.text
+                spaced = x + " " + y in self.text
+                if stuck != spaced:
+                    return "" if stuck else " "
+        return None
+
+
+def gap_for(left, right, corpus):
+    """이 자리에 무엇이 있었는지. 모르면 None (줄바꿈을 그대로 둔다)."""
+    if not left or not right:
+        return None
+    if right[0] in NO_SPACE_BEFORE:
+        return ""
+    if left[-1] in NO_SPACE_AFTER:
+        return ""
+    if left[-1] in ",;:":
+        return " "
+    if CITE_L.search(left) and CITE_R.match(right):
+        return ""
+    if left.endswith("제") and right[:1].isdigit():
+        return ""
+    # 괄호가 열리는 자리는 줄을 바꾸는 편이 읽기 좋다 (그대로 둔다)
+    if right[0] in NO_SPACE_AFTER:
+        return None
+    g = corpus.decide(left, right) if corpus else None
+    if g is not None:
+        return g
+    if NEXT_WORD.match(right) or PREV_WORD.search(left):
+        return " "
+    return None
+
+
+def join(frags, corpus=None):
+    frags = [f.rstrip() for f in frags]
+    if len([f for f in frags if f.strip()]) < 2:
+        return NL.join(f.strip() for f in frags).strip()
+    out = ""
+    for f in frags:
+        s = f.strip()
+        if not s:
+            continue
+        if not out:
+            out = s
+            continue
+        if MARK.match(f):
+            out += NL + s
+            continue
+        last = out.split(NL)[-1]
+        g = gap_for(last, s, corpus)
+        out += (g + s) if g is not None else (NL + s)
+    return out.strip()
+
+
+def build_corpus(docs):
+    """조문 본문 — 강제 줄바꿈이 없는 온전한 문장이라 띄어쓰기의 근거가 된다."""
+    buf = []
+    for d in docs:
+        for a in d.get("조문", []):
+            if a.get("본문"):
+                buf.append(a["본문"])
+            for h in a.get("항", []) or []:
+                if h.get("내용"):
+                    buf.append(h["내용"])
+                buf.extend(h.get("호", []) or [])
+    return Corpus(NL.join(buf))
+
+
+def split_table(text, corpus=None):
     """별표를 [['t', 글] | ['r', 행목록]] 으로 자른다. 표를 못 풀면 None."""
     out, seen = [], False
     for kind, lines in blocks(text):
@@ -264,12 +369,14 @@ def split_table(text):
         if rows is None:
             return None
         seen = True
+        rows = [[(join(c.split(NL), corpus), n) for c, n in row] for row in rows]
         out.append(["r", [[c if n == 1 else [c, n] for c, n in row] for row in rows]])
     return out if seen else None
 
 
 def slim(docs):
-    """앱이 쓰지 않는 필드를 덜어내고, 별표 표의 줄 끝 공백을 정리한다."""
+    """앱이 쓰지 않는 필드를 덜어내고, 별표를 읽기 좋은 꼴로 바꾼다."""
+    corpus = build_corpus(docs)
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
                 "수집일", "조문", "별표", "약호", "단계", "군"}
     for d in docs:
@@ -290,9 +397,9 @@ def slim(docs):
             b["내용"] = "\n".join(l.rstrip() for l in b["내용"].split("\n")).strip("\n")
             kind, text = convert(b["내용"])
             if kind == "글":
-                b["내용"], b["글"] = text, 1
+                b["내용"], b["글"] = join(text.split(NL), corpus), 1
                 continue
-            pieces = split_table(text)
+            pieces = split_table(text, corpus)
             if pieces:
                 b["조각"] = pieces
                 b.pop("내용", None)

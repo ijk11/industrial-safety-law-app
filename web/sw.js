@@ -1,5 +1,5 @@
 /* 산안법 조문 찾기 — 오프라인 캐시. 판이 바뀌면 CACHE 이름이 바뀌고 옛 캐시는 지워진다. */
-const CACHE = "osh-0e7fd1ff1213";
+const CACHE = "osh-742c06cb8826";
 const ASSETS = [
   "./",
   "./index.html",
