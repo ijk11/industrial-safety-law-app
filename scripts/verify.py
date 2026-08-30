@@ -33,6 +33,8 @@ SHOTS = {
     "별표": '''document.documentElement.setAttribute("data-theme","dark");
         const r=RECS.find(x=>DOCS[x.d].법령명==="산업안전보건법 시행령"&&x.kind===1&&x.no==="별표 3");
         openRec(r.key,"new");await w(700);''',
+    "별표글": '''const r=RECS.find(x=>x.kind===1&&x.flow);
+        openRec(r.key,"new");await w(700);''',
     "목차": '''idxDoc=DOCS.findIndex(d=>d.법령명==="산업안전보건기준에 관한 규칙");
         setTab("index");await w(700);''',
 }

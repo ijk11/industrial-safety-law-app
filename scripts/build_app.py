@@ -6,7 +6,7 @@
 원문 전체를 gzip+base64로 파일 안에 넣고, 앱이 열릴 때 기기 안에서 펼친다.
 산출물: dist/산안법-조문찾기.html
 """
-import base64, gzip, io, json, os, re, sys
+import base64, gzip, io, json, os, re, sys, unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -55,6 +55,75 @@ def collect():
     return docs
 
 
+# ---------------- 별표 괘선 ----------------
+# 별표 551건 중 91건은 표가 아니라 글을 상자에 넣어 둔 것이거나 아예 괘선이 없다.
+# 그런 것은 괘선 장식만 걷어내 비례 글꼴로 흘려 보낸다 (폰에서 가로로 잘리지 않는다).
+# 진짜 표 460건은 칸이 맞아야 하므로 손대지 않는다.
+V = "│┃"
+H = "─━"
+JOINT = "┌┬┐├┼┤└┴┘┏┳┓┣╋┫┗┻┛┠┨┯┷┰┸╂┿"
+BOX = V + H + JOINT
+BOXSET = set(BOX)
+RE_BOX = re.compile("[" + re.escape(BOX) + "]")
+
+
+def is_border(l):
+    """괘선만으로 이뤄진 줄. 모서리 없이 ─ 로 시작하는 줄도 포함한다."""
+    s = l.strip()
+    return bool(s) and set(s) <= BOXSET | {" "} and any(c in H for c in s)
+
+
+def col_count(text):
+    n = 0
+    for l in text.split("\n"):
+        if is_border(l):
+            n = max(n, sum(1 for c in l if c in JOINT) - 1)
+        s = l.strip()
+        if s and s[0] in V:
+            n = max(n, sum(1 for c in s if c in V) - 1)
+    return n
+
+
+def space_aligned(text):
+    """괘선 없이 공백으로 칸을 맞춘 것. 비례 글꼴로 흘리면 정렬이 깨진다."""
+    ls = [l for l in text.split("\n") if l.strip()]
+    if len(ls) < 4:
+        return False
+    return sum(1 for l in ls if re.search(r"\S {2,}\S", l)) / len(ls) >= 0.3
+
+
+def strip_box(text):
+    out = []
+    for l in text.split("\n"):
+        if is_border(l):
+            continue
+        s = l.rstrip()
+        while s and s[0] in V:
+            s = s[1:]
+        while s and s[-1] in V:
+            s = s[:-1]
+        out.append(s.rstrip())
+    return out
+
+
+def convert(text):
+    """('글'|'표', 내용). '글' 은 비례 글꼴로 흘려도 되는 것.
+
+    줄바꿈은 손대지 않는다. 원문이 칸 너비에 맞춰 접어 둔 자리에 공백이 있었는지가
+    데이터에 남아 있지 않아(줄 끝 공백이 전부 잘려 있다), 도로 이으면 '해당 지정기관'
+    이 '해당지정기관' 이 된다. 법령 원문을 바꾸는 셈이라 하지 않는다.
+    """
+    if col_count(text) > 1:
+        return "표", text
+    if not RE_BOX.search(text):
+        return ("표", text) if space_aligned(text) else ("글", text)
+    body = "\n".join(strip_box(text)).strip("\n")
+    # 안전망 — 벗겼는데도 괘선이 남았다면 표를 잘못 본 것이다. 원문 그대로 둔다.
+    if RE_BOX.search(body):
+        return "표", text
+    return "글", body
+
+
 def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표 표의 줄 끝 공백을 정리한다."""
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
@@ -75,6 +144,10 @@ def slim(docs):
                 a.pop("본문", None)
         for b in d.get("별표", []):
             b["내용"] = "\n".join(l.rstrip() for l in b["내용"].split("\n")).strip("\n")
+            kind, text = convert(b["내용"])
+            b["내용"] = text
+            if kind == "글":
+                b["글"] = 1
     return docs
 
 

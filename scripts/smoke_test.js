@@ -150,6 +150,22 @@
   ok("아래 중복 시행일 없음", !!bodyEl && !/이 조문의 시행일/.test(txt(bodyEl)));
   history.back(); await wait(400);
 
+  // 괘선 없는 별표는 상자를 벗기고 접혀서 나온다
+  const flowRec = RECS.find(r => r.kind === 1 && r.flow);
+  ok("접히는 별표 있음", !!flowRec, flowRec ? DOCS[flowRec.d].법령명 + " " + flowRec.no : "-");
+  if (flowRec) {
+    openRec(flowRec.key, "new"); await wait(450);
+    ok("괘선 없는 별표는 문단으로", !!$$("#rbody .tbltext") && !$$("#rbody pre.tbl"));
+    ok("괘선 문자가 남지 않음", !/[─-╋]/.test(txt($$("#rbody .tbltext"))));
+    history.back(); await wait(400);
+  }
+  const tblRec = RECS.find(r => r.kind === 1 && !r.flow);
+  if (tblRec) {
+    openRec(tblRec.key, "new"); await wait(450);
+    ok("진짜 표는 고정폭 그대로", !!$$("#rbody pre.tbl"));
+    history.back(); await wait(400);
+  }
+
   // 글꼴
   try {
     await document.fonts.ready;

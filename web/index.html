@@ -231,6 +231,8 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .del{color:var(--ink-3)}
 a.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer}
 .tblwrap{overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px}
+/* 표가 아닌 별표 — 괘선을 걷어냈으므로 본문처럼 접히게 둔다 */
+.tbltext{font-size:16px;line-height:1.8;white-space:pre-wrap;overflow-wrap:break-word}
 pre.tbl{margin:0;font-family:var(--font-mono);font-size:var(--tblsize,12px);
   line-height:1.5;white-space:pre;color:var(--ink)}
 .zoom{display:flex;gap:6px;align-items:center;margin:10px 0 6px;font-size:12px;color:var(--ink-3)}
@@ -387,7 +389,8 @@ function buildIndex() {
       RECS.push(r); BYKEY.set(r.key, r);
     });
     (d.별표 || []).forEach((b, bi) => {
-      const r = { d: di, i: bi, kind: 1, no: b.번호 || "", title: b.제목 || "", chap: "", body: b.내용 || "" };
+      const r = { d: di, i: bi, kind: 1, no: b.번호 || "", title: b.제목 || "", chap: "",
+                  body: b.내용 || "", flow: !!b.글 };
       r.hay = (r.no + " " + r.title).toLowerCase();
       r.key = di + ":b:" + bi;
       RECS.push(r); BYKEY.set(r.key, r);
@@ -726,7 +729,10 @@ function showRec(key) {
   }
   if (when) h += '<div class="rwhen">' + whenLabel + esc(when) + "</div>";
 
-  if (r.kind === 1) {
+  if (r.kind === 1 && r.flow) {
+    /* 칸이 없는 별표는 고정폭으로 붙들어 둘 이유가 없다. 폰 너비에 맞춰 접는다 */
+    h += '<div class="tbltext">' + esc(r.body) + "</div>";
+  } else if (r.kind === 1) {
     h += '<div class="zoom"><span>표 크기</span><button data-z="-1">−</button><button data-z="1">+</button></div>';
     h += '<div class="tblwrap"><pre class="tbl">' + esc(r.body) + "</pre></div>";
   } else {
