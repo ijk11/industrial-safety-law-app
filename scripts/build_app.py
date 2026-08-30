@@ -95,7 +95,8 @@ ART_LOADER = """async function loadLawText() {
 def main():
     docs = slim(collect())
     payload = json.dumps(docs, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    gz = gzip.compress(payload, 9)
+    # mtime=0 — 같은 원문이면 같은 파일이 나오게 한다 (안 그러면 다시 구울 때마다 2.2MB가 통째로 바뀐다)
+    gz = gzip.compress(payload, 9, mtime=0)
     b64 = base64.b64encode(gz).decode("ascii")
 
     with io.open(os.path.join(ROOT, "scripts", "app_template.html"), encoding="utf-8") as f:

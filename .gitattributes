@@ -1,0 +1,8 @@
+# 아래 파일들은 절대 줄바꿈 변환을 타면 안 된다.
+# 법령 데이터(.gz)나 글꼴(.woff2)이 CRLF 로 바뀌면 앱이 그냥 깨진다.
+*.gz    binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.png   binary
+*.zip   binary

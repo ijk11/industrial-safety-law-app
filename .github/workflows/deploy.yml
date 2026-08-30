@@ -1,0 +1,117 @@
+# main 에 푸시하면 앱을 다시 굽고, 브라우저로 전수 검사한 뒤 GitHub Pages 에 올린다.
+# 올린 다음에는 주소가 실제로 열리는지까지 확인한다.
+#
+# 처음 한 번만 저장소에서 켜 주면 된다:
+#   Settings → Pages → Build and deployment → Source: GitHub Actions
+#
+# 법이 개정되면 로컬에서 `python scripts/fetch_laws.py` 로 data/ 를 갱신하고
+# 커밋해 푸시하는 것으로 끝난다. 굽기·검사·올리기는 여기서 한다.
+name: 앱 굽고 Pages 에 올리기
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 앞선 배포를 중간에 끊지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # build_pwa.py 가 기기별 splash 목록을 읽으려고 build_splash 를 import 하는데,
+      # 그 파일이 맨 위에서 PIL 을 불러온다. 그림을 새로 그리지는 않는다
+      # (아이콘·splash·글꼴은 이미 web/ 에 구워져 저장소에 들어 있다).
+      - name: Pillow 설치
+        run: pip install --disable-pip-version-check pillow
+
+      - name: 앱 굽기
+        run: python scripts/build_pwa.py
+
+      # 커밋된 web/ 이 data/ 와 어긋나면 알려 준다.
+      # gzip 을 mtime=0 으로 굽기 때문에, 원문이 그대로면 결과도 바이트까지 같다.
+      # 어긋나더라도 배포는 방금 구운 판으로 그대로 진행한다.
+      - name: 커밋된 web/ 과 맞는지 확인
+        run: |
+          if git diff --quiet -- web; then
+            echo "커밋된 web/ 이 data/ 와 일치합니다."
+          else
+            echo "::warning::커밋된 web/ 이 data/ 와 어긋나 있습니다. 방금 구운 판으로 올립니다. 로컬에서 build_pwa.py 를 돌려 web/ 을 함께 커밋해 두면 저장소와 실제 앱이 같아집니다."
+            git diff --stat -- web
+          fi
+
+      # 눈으로 몇 개 보고 넘어가면 못 잡는다. 실제 크롬으로 25개 항목을 눌러 본다.
+      # 하나라도 FAIL 이면 exit 1 이라 여기서 멈추고, 깨진 판은 올라가지 않는다.
+      - name: 브라우저로 전수 검사
+        run: python scripts/verify.py
+
+      - name: 판(version) 적어 두기
+        run: |
+          {
+            echo "### 올린 판"
+            echo '```'
+            grep -o 'osh-[0-9a-f]*' web/sw.js | head -1
+            du -sh web
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      # 올리기가 성공했다고 앱이 열리는 건 아니다. 주소를 실제로 받아 본다.
+      # -f + 재시도라서, Pages 가 아직 뜨는 중이면 기다렸다가 다시 받는다.
+      - name: 주소가 실제로 열리는지 확인
+        run: |
+          url="${{ steps.deployment.outputs.page_url }}"
+          echo "확인할 주소: $url"
+
+          curl -fsS --retry 6 --retry-delay 5 --retry-all-errors -o page.html "$url"             || { echo "::error::첫 화면이 열리지 않습니다: $url"; exit 1; }
+          grep -q 'laws.json.gz' page.html             || { echo "::error::첫 화면이 앱이 아닙니다 (법령 데이터를 부르는 자리가 없음)"; exit 1; }
+
+          curl -fsS --retry 6 --retry-delay 5 --retry-all-errors -o laws.gz "${url}data/laws.json.gz"             || { echo "::error::법령 데이터가 내려오지 않습니다: ${url}data/laws.json.gz"; exit 1; }
+          size=$(wc -c < laws.gz)
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::법령 데이터가 너무 작습니다 (${size} 바이트). 404 쪽이 대신 왔을 수 있습니다."
+            exit 1
+          fi
+
+          # 앱은 서버가 풀어 준 경우와 gzip 그대로인 경우를 앞 두 바이트로 가려낸다.
+          # 어느 쪽이든 동작하므로 여기서는 무엇이 왔는지만 적어 둔다.
+          if [ "$(head -c2 laws.gz | xxd -p)" = "1f8b" ]; then
+            form="gzip 그대로"
+          else
+            form="서버가 이미 풀어 줌"
+          fi
+
+          {
+            echo "### 실제로 열리는지"
+            echo "- 주소: $url"
+            echo "- 첫 화면: 열림"
+            echo "- 법령 데이터: $((size / 1000))KB · $form"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "열립니다."

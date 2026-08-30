@@ -202,7 +202,9 @@ def asset_list():
 def main():
     docs = B.slim(B.collect())
     raw = json.dumps(docs, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    gz = gzip.compress(raw, 9)
+    # mtime=0 — gzip 머리에 현재 시각이 박히면 원문이 그대로여도 바이트가 달라진다.
+    # 그러면 아래 version(sha256)이 매번 바뀌어, 법령이 안 바뀌었는데도 폰이 1.6MB를 다시 받는다.
+    gz = gzip.compress(raw, 9, mtime=0)
 
     os.makedirs(os.path.join(WEB, "data"), exist_ok=True)
     with open(os.path.join(WEB, "data", "laws.json.gz"), "wb") as f:

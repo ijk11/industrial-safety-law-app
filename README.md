@@ -66,24 +66,49 @@ python scripts/verify.py --shots   # 크롬을 화면 없이 띄워 25개 항목
 
 ## 올리기
 
+GitHub Pages에 자동으로 올라간다. 저장소에서 한 번만 켜 주면 된다.
+
+**Settings → Pages → Build and deployment → Source** 를 `GitHub Actions` 로 바꾼다.
+그 뒤로는 `main`에 푸시할 때마다 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)이
+앱을 다시 굽고 올린다. 주소는 `https://thenewij.github.io/industrial-safety-law-app/`.
+
+무료 플랜에서는 **저장소가 공개여야** Pages가 동작한다. 원문이 국가법령정보센터 공개 자료라
+공개해도 문제는 없지만, 비공개로 두고 싶으면 아래 대안을 쓴다.
+
+법이 개정되면 이것만 하면 된다.
+
+```bash
+python scripts/fetch_laws.py     # 원문 다시 받기 → data/
+python scripts/build_pwa.py      # 앱 다시 굽기   → web/  (건너뛰어도 CI가 다시 굽는다)
+git commit -am "법령 갱신" && git push
+```
+
+원문이 그대로면 다시 구워도 결과가 바이트까지 같다 — gzip을 `mtime=0`으로 굽기 때문이다.
+그래서 법이 안 바뀐 푸시로는 서비스워커 캐시 이름이 그대로고, 폰이 1.6MB를 다시 받지 않는다.
+원문이 바뀌면 캐시 이름이 함께 바뀌므로 앱을 닫았다 열면 새 판으로 갈린다.
+
+글꼴·아이콘·실행 화면은 이미 `web/`에 구워져 저장소에 들어 있어 CI에서 다시 굽지 않는다.
+새 글자가 생겼을 때만 로컬에서 `build_fonts.py`를 돌린다.
+
+### 다른 데 올리려면
+
 `web/` 폴더를 정적 호스팅에 통째로 올리면 끝이다. 서버도 빌드 설정도 필요 없다.
 `https`여야 홈 화면 설치와 오프라인 캐시가 동작한다.
 
-| | 폴더 드래그로 올리기 | 대역폭 | 걸리는 것 |
+| | 비공개 저장소 | 대역폭 | 걸리는 것 |
 |---|---|---|---|
-| **Cloudflare Pages** | 된다 (Direct Upload) | 무제한 | 계정만 |
-| Netlify Drop | 된다 (제일 빠름) | 100GB/월 | 계정만 |
-| GitHub Pages | 된다 | 100GB/월 | **공개 저장소여야** 무료 |
-| Firebase Hosting | 안 된다 (CLI 필요) | 360MB/일 | **Node.js 설치** |
+| **GitHub Pages** | 유료 플랜만 | 100GB/월 | 저장소 설정 한 번 |
+| Cloudflare Pages | 된다 | 무제한 | 계정 + 대시보드 설정 |
+| Netlify Drop | 된다 (폴더 드래그) | 100GB/월 | 계정만 |
+| Firebase Hosting | 된다 | 360MB/일 | **Node.js 설치** |
 
-Firebase는 `firebase-tools`(npm)로만 배포되고 콘솔에 업로드 창이 없다. 무료 한도(하루 360MB ≈ 첫 설치 150회)는
-몇 명이 쓰기엔 넉넉하지만, Node를 깔아야 한다는 점 때문에 여기서는 권하지 않는다.
+Cloudflare Pages는 비공개 저장소를 그대로 연결할 수 있다. 빌드 명령 `python scripts/build_pwa.py`,
+출력 폴더 `web`으로 두면 푸시할 때마다 같은 방식으로 올라간다.
+Firebase는 `firebase-tools`(npm)로만 배포되고 콘솔에 업로드 창이 없어 Node를 깔아야 한다.
 
-검색엔진에는 잡히지 않게 `noindex` + `robots.txt`를 넣어 뒀다. 주소를 아는 사람만 쓰는 용도다.
-
-법이 개정되면 `fetch_laws.py` → `build_pwa.py` 두 번 돌리고 `web/`을 다시 올린다.
-파일이 바뀌면 서비스워커 캐시 이름이 함께 바뀌므로, 폰에서 앱을 닫았다 열면 새 판으로 갈린다.
-글꼴은 새 글자가 생겼을 때만 다시 구우면 된다.
+검색엔진에는 `index.html`의 `noindex`로 막아 둔다. 주소를 아는 사람만 쓰는 용도다.
+`web/robots.txt`도 넣어 두었지만, `github.io` 하위 주소에서는 크롤러가 저장소 밖의 루트
+robots.txt를 보기 때문에 실제로 막는 것은 `noindex` 쪽이다.
 
 ### 함께 쓰는 사람에게 보낼 안내
 
@@ -97,6 +122,7 @@ Firebase는 `firebase-tools`(npm)로만 배포되고 콘솔에 업로드 창이 
 ### 폴더
 
 ```
+.github/workflows/          푸시하면 다시 굽고 GitHub Pages에 올린다
 data/laws/, data/notices/   법령별 JSON 원문 (형식은 data/SCHEMA.md)
 scripts/app_template.html   앱 본체 — PWA와 단일 HTML 두 갈래로 구워진다
 scripts/build_app.py        단일 HTML 한 개로 굽기 (dist/)
