@@ -233,6 +233,12 @@ a.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;te
 .tblwrap{overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px}
 /* 표가 아닌 별표 — 괘선을 걷어냈으므로 본문처럼 접히게 둔다 */
 .tbltext{font-size:16px;line-height:1.8;white-space:pre-wrap;overflow-wrap:break-word}
+/* 괘선표에서 풀어낸 진짜 표 */
+.gridwrap{overflow-x:auto;margin:0 0 14px;-webkit-overflow-scrolling:touch}
+.grid{border-collapse:collapse;font-size:13.5px;line-height:1.6;min-width:100%}
+.grid th,.grid td{border:1px solid var(--line-2);padding:7px 9px;vertical-align:top;
+  text-align:left;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word}
+.grid th{background:var(--surface-2);font-weight:700}
 pre.tbl{margin:0;font-family:var(--font-mono);font-size:var(--tblsize,12px);
   line-height:1.5;white-space:pre;color:var(--ink)}
 .zoom{display:flex;gap:6px;align-items:center;margin:10px 0 6px;font-size:12px;color:var(--ink-3)}
@@ -389,13 +395,38 @@ function buildIndex() {
       RECS.push(r); BYKEY.set(r.key, r);
     });
     (d.별표 || []).forEach((b, bi) => {
+      const ps = b.조각 || null;
       const r = { d: di, i: bi, kind: 1, no: b.번호 || "", title: b.제목 || "", chap: "",
-                  body: b.내용 || "", flow: !!b.글 };
+                  body: ps ? piecesText(ps) : (b.내용 || ""), flow: !!b.글, ps: ps };
       r.hay = (r.no + " " + r.title).toLowerCase();
       r.key = di + ":b:" + bi;
       RECS.push(r); BYKEY.set(r.key, r);
     });
   });
+}
+
+/* 괘선표에서 풀어낸 별표 — 검색은 글자만 이어 붙여서 하고, 화면은 표로 그린다 */
+function piecesText(ps) {
+  return ps.map(p => p[0] === "t" ? p[1]
+    : p[1].map(row => row.map(c => typeof c === "string" ? c : c[0]).join(" ")).join("\n")
+  ).join("\n");
+}
+
+function piecesHTML(ps) {
+  return ps.map(p => {
+    if (p[0] === "t") return '<div class="tbltext">' + esc(p[1]) + "</div>";
+    const rows = p[1];
+    let out = '<div class="gridwrap"><table class="grid">';
+    rows.forEach((row, i) => {
+      const tag = (i === 0 && rows.length > 1) ? "th" : "td";
+      out += "<tr>" + row.map(c => {
+        const t = typeof c === "string" ? c : c[0];
+        const n = typeof c === "string" ? 1 : c[1];
+        return "<" + tag + (n > 1 ? ' colspan="' + n + '"' : "") + ">" + esc(t) + "</" + tag + ">";
+      }).join("") + "</tr>";
+    });
+    return out + "</table></div>";
+  }).join("");
 }
 
 /* 별표 본문은 용량이 커서, 필요해질 때 한 번만 소문자 사본을 만든다 */
@@ -729,7 +760,9 @@ function showRec(key) {
   }
   if (when) h += '<div class="rwhen">' + whenLabel + esc(when) + "</div>";
 
-  if (r.kind === 1 && r.flow) {
+  if (r.kind === 1 && r.ps) {
+    h += piecesHTML(r.ps);
+  } else if (r.kind === 1 && r.flow) {
     /* 칸이 없는 별표는 고정폭으로 붙들어 둘 이유가 없다. 폰 너비에 맞춰 접는다 */
     h += '<div class="tbltext">' + esc(r.body) + "</div>";
   } else if (r.kind === 1) {

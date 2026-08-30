@@ -159,10 +159,23 @@
     ok("괘선 문자가 남지 않음", !/[─-╋]/.test(txt($$("#rbody .tbltext"))));
     history.back(); await wait(400);
   }
-  const tblRec = RECS.find(r => r.kind === 1 && !r.flow);
-  if (tblRec) {
-    openRec(tblRec.key, "new"); await wait(450);
-    ok("진짜 표는 고정폭 그대로", !!$$("#rbody pre.tbl"));
+  const BOXCH = "│┃─━┌┬┐├┼┤└┴┘┏┳┓┣╋┫┗┻┛┠┨".split("");
+  const gridRec = RECS.find(r => r.kind === 1 && r.ps);
+  ok("괘선표를 진짜 표로 푼 것 있음", !!gridRec,
+     gridRec ? DOCS[gridRec.d].법령명 + " " + gridRec.no : "-");
+  if (gridRec) {
+    openRec(gridRec.key, "new"); await wait(500);
+    const g = $$("#rbody table.grid");
+    ok("표 태그로 그려짐", !!g && g.rows.length > 1 && g.rows[0].cells.length > 1,
+       g ? g.rows.length + "행 " + g.rows[0].cells.length + "열" : "-");
+    ok("표 안에 괘선 문자 없음", !!g && !BOXCH.some(c => txt(g).indexOf(c) >= 0));
+    ok("표에 빈 칸만 있지 않음", !!g && txt(g).length > 20, g ? txt(g).slice(0, 50) : "-");
+    history.back(); await wait(400);
+  }
+  const rawRec = RECS.find(r => r.kind === 1 && !r.flow && !r.ps);
+  if (rawRec) {
+    openRec(rawRec.key, "new"); await wait(450);
+    ok("못 푼 표는 원문 그대로", !!$$("#rbody pre.tbl"));
     history.back(); await wait(400);
   }
 

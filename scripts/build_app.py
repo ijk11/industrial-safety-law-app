@@ -124,6 +124,150 @@ def convert(text):
     return "글", body
 
 
+
+# 괘선표를 진짜 표로 — 466건 중 171건이 글자 손실 없이 풀린다.
+# 중첩 표·끊긴 테두리처럼 조금이라도 미심쩍으면 None 을 돌려주고 원문 그대로 둔다.
+NL = chr(10)
+
+def dw(ch):
+    return 2 if unicodedata.east_asian_width(ch) in "WFA" else 1
+
+
+def at(line, chars):
+    out, x = [], 0
+    for ch in line:
+        if ch in chars:
+            out.append(x)
+        x += dw(ch)
+    return out
+
+
+def is_row(l):
+    s = l.strip()
+    return bool(s) and s[0] in V
+
+
+def blocks(text):
+    out, cur, kind = [], [], None
+    for l in text.split(NL):
+        k = "tbl" if (is_border(l) or is_row(l)) else "txt"
+        if k != kind:
+            if cur:
+                out.append((kind, cur))
+            cur, kind = [], k
+        cur.append(l)
+    if cur:
+        out.append((kind, cur))
+    return out
+
+
+def split_cells(l, edges, tol):
+    """한 줄을 세로선 기준으로 자른다 → [(글, 시작칸, 끝칸)].
+
+    원문이 칸을 넘겨 세로선이 밀린 표가 많다. 가까운 경계로 붙여 읽되,
+    순서가 뒤집히거나 tol 보다 멀면 손을 뗀다."""
+    pos = at(l, V)
+    if len(pos) < 2:
+        return None
+    snap, prev = [], -1
+    for p in pos:
+        k = min(range(len(edges)), key=lambda j: abs(edges[j] - p))
+        if abs(edges[k] - p) > tol or k <= prev:
+            return None
+        snap.append(k)
+        prev = k
+    cells, buf, start, seen = [], None, None, 0
+    for ch in l:
+        if ch in V:
+            k = snap[seen]
+            seen += 1
+            if buf is not None:
+                cells.append(("".join(buf), start, k))
+            buf, start = [], k
+            continue
+        if buf is not None:
+            buf.append(ch)
+    return cells or None
+
+
+def parse(lines):
+    """[[(글, colspan), ...], ...] 로. 못 풀면 None."""
+    borders = [l for l in lines if is_border(l)]
+    if not borders:
+        return None
+    edges = sorted({p for l in borders for p in at(l, JOINT)})
+    if len(edges) < 3:
+        return None
+    gap = min(b - a for a, b in zip(edges, edges[1:]))
+    tol = max(1, min(8, gap // 2))
+
+    groups, cur = [], []
+    for l in lines:
+        if is_border(l):
+            if cur:
+                groups.append(cur)
+            cur = []
+            continue
+        if is_row(l):
+            cur.append(l)
+        elif l.strip():
+            return None
+    if cur:
+        groups.append(cur)
+    if not groups:
+        return None
+
+    rows = []
+    for g in groups:
+        shape, acc = None, None
+        for l in g:
+            cs = split_cells(l, edges, tol)
+            if cs is None or cs[0][1] != 0 or cs[-1][2] != len(edges) - 1:
+                return None
+            sig = [(a, b) for _, a, b in cs]
+            if shape is None:
+                shape, acc = sig, [[t] for t, _, _ in cs]
+            elif sig != shape:
+                rows.append(_row(acc, shape))     # 칸 모양이 바뀌면 새 행
+                shape, acc = sig, [[t] for t, _, _ in cs]
+            else:
+                for i, (t, _, _) in enumerate(cs):
+                    acc[i].append(t)
+        if acc:
+            rows.append(_row(acc, shape))
+    if not rows:
+        return None
+    # 셀 안에 괘선이 남았다면 표 안에 표가 또 그려진 것이다. 손대지 않는다.
+    for row in rows:
+        for text, _ in row:
+            if any(c in BOXSET for c in text):
+                return None
+    return rows
+
+
+def _row(acc, shape):
+    return [(NL.join(x.rstrip() for x in acc[i]).strip(), shape[i][1] - shape[i][0])
+            for i in range(len(acc))]
+
+
+
+def split_table(text):
+    """별표를 [['t', 글] | ['r', 행목록]] 으로 자른다. 표를 못 풀면 None."""
+    out, seen = [], False
+    for kind, lines in blocks(text):
+        if kind == "txt":
+            s = NL.join(lines).strip(NL)
+            if s.strip():
+                out.append(["t", s])
+            continue
+        rows = parse(lines)
+        if rows is None:
+            return None
+        seen = True
+        out.append(["r", [[c if n == 1 else [c, n] for c, n in row] for row in rows]])
+    return out if seen else None
+
+
 def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표 표의 줄 끝 공백을 정리한다."""
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
@@ -145,9 +289,15 @@ def slim(docs):
         for b in d.get("별표", []):
             b["내용"] = "\n".join(l.rstrip() for l in b["내용"].split("\n")).strip("\n")
             kind, text = convert(b["내용"])
-            b["내용"] = text
             if kind == "글":
-                b["글"] = 1
+                b["내용"], b["글"] = text, 1
+                continue
+            pieces = split_table(text)
+            if pieces:
+                b["조각"] = pieces
+                b.pop("내용", None)
+            else:
+                b["내용"] = text
     return docs
 
 
