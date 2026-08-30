@@ -1,5 +1,5 @@
 /* 산안법 조문 찾기 — 오프라인 캐시. 판이 바뀌면 CACHE 이름이 바뀌고 옛 캐시는 지워진다. */
-const CACHE = "osh-b9f1c54cf67e";
+const CACHE = "osh-65bfada23613";
 const ASSETS = [
   "./",
   "./index.html",
@@ -41,6 +41,11 @@ self.addEventListener("activate", e => {
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+/* 「새 판으로 바꾸기」 를 눌렀을 때. 기다리지 않고 바로 이 판으로 넘어간다. */
+self.addEventListener("message", e => {
+  if (e.data && e.data.type === "skipWaiting") self.skipWaiting();
 });
 
 self.addEventListener("fetch", e => {

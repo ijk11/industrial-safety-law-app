@@ -130,6 +130,17 @@
   history.back(); await wait(450);
   ok("뒤로가기: 조문 닫힘", $$("#reader").hidden);
 
+  // 법령 판 — 언제 받아온 원문인지 밝히는 칸
+  document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(400);
+  const stamp = txt($$("#stamp"));
+  ok("헤더에 기준일 표시", /^\d{4}-\d{2}-\d{2} 기준$/.test(stamp), stamp);
+  const vb = $$(".verbox");
+  ok("저장 탭에 법령 판 칸", !!vb && /기준일/.test(txt(vb)), vb ? txt(vb).slice(0, 60) : "-");
+  ok("법령 판에 담긴 법령 수", !!vb && new RegExp(DOCS.length + "건").test(txt(vb)),
+     vb ? txt(vb).slice(0, 90) : "-");
+  ok("법령 판에 가장 늦은 시행일", !!vb && /가장 늦은 시행일 \d{4}-\d{2}-\d{2}/.test(txt(vb)));
+  ok("법령 업데이트 버튼", !!$$(".verbtn"), $$(".verbtn") ? txt($$(".verbtn")) : "-");
+
   // 글꼴
   try {
     await document.fonts.ready;

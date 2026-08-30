@@ -160,6 +160,16 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 
 /* ---------- 첫 화면 ---------- */
 .sec{margin:18px 0 8px;font-size:11px;letter-spacing:.09em;color:var(--ink-3);font-weight:700}
+.verbox{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:2px 13px}
+.verline{display:flex;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line)}
+.verline:last-child{border-bottom:0}
+.verline b{flex:none;width:66px;font-size:11.5px;font-weight:700;color:var(--ink-3);letter-spacing:.03em}
+.verline span{flex:1;min-width:0;font-size:13px;color:var(--ink-2);line-height:1.55}
+.verbtn{width:100%;margin-top:10px;padding:12px;border:1px solid var(--line-2);border-radius:10px;
+  background:var(--surface);color:var(--ink);font-size:14px;font-weight:600}
+.verbtn:disabled{color:var(--ink-3)}
+.verbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.vernote{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
 .hint{margin:30px 4px 30px;font-size:13px;line-height:2.1;color:var(--ink-3)}
 .hint b{color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:7px}
@@ -329,6 +339,7 @@ let DOCS = [], RECS = [], BYKEY = new Map();
 let saved = store.get("saved", []), recent = store.get("recent", []);
 let filter = "전체", shown = 60, hits = [], tab = "search";
 let idxDoc = null, views = [];
+let BASIS = "", NEWEST = "";
 
 /* ---------------- 데이터 펼치기 ---------------- */
 async function gunzip(bytes) {
@@ -552,7 +563,101 @@ function renderSaved() {
   h += s.length ? '<ul class="list">' + s.map(r => cardHTML(r)).join("") + "</ul>"
     : '<div class="empty"><b>아직 없습니다</b>조문을 열고 오른쪽 위 책갈피를 누르면<br>현장에서 자주 보는 조문을 모아 둘 수 있습니다.</div>';
   if (r2.length) h += '<div class="sec">최근 본 조문</div><ul class="list">' + r2.slice(0, 15).map(r => cardHTML(r)).join("") + "</ul>";
+  h += versionBoxHTML();
   v.innerHTML = h;
+  mountVersion();
+}
+
+/* ---------------- 법령 판 ----------------
+   원문을 언제 받아온 것인지 밝히고, 새 판을 직접 확인해 바로 갈아탈 수 있게 한다.
+   평소에도 앱을 열면 저절로 받아 두지만, 그건 앱을 완전히 닫았다 열어야 반영된다. */
+function versionBoxHTML() {
+  return '<div class="sec">법령 판</div><div class="verbox">' +
+    '<div class="verline"><b>기준일</b><span>' + esc(BASIS || "-") +
+      ' · 국가법령정보센터에서 받은 원문입니다</span></div>' +
+    '<div class="verline"><b>담긴 법령</b><span>' + DOCS.length + '건 · 가장 늦은 시행일 ' +
+      esc(NEWEST) + '</span></div>' +
+    '<div class="verline"><b>앱 판</b><span id="verhash">-</span></div></div>' +
+    '<div id="vermount"></div>' +
+    '<p class="vernote">법령별 시행일은 목차에서 법령마다 볼 수 있습니다. ' +
+      '개정되면 새 판이 올라오며, 평소에도 앱을 열 때 저절로 받아 둡니다.</p>';
+}
+
+/* 버튼을 먼저 단다. 캐시·등록 조회는 환경에 따라 오래 걸리거나 영영 안 끝나기도 해서,
+   그걸 기다리다 버튼을 못 다는 일이 없도록 순서를 갈라 두었다. */
+function mountVersion() {
+  const mount = $("#vermount");
+  /* 단일 HTML 로 연 경우엔 받아올 새 판이 없으니 버튼도 만들지 않는다 */
+  if (mount && "serviceWorker" in navigator && location.protocol !== "file:") {
+    const btn = document.createElement("button");
+    btn.className = "verbtn";
+    btn.textContent = "법령 업데이트 확인";
+    btn.onclick = () => checkUpdate(btn);
+    mount.appendChild(btn);
+  }
+  fillVersionHash();
+}
+
+async function fillVersionHash() {
+  const hash = $("#verhash");
+  if (!hash || !window.caches) return;
+  try {
+    const keys = await Promise.race([
+      caches.keys(),
+      new Promise(r => setTimeout(() => r(null), 3000))
+    ]);
+    const k = keys && keys.find(x => x.indexOf("osh-") === 0);
+    if (k) hash.textContent = k.slice(4);
+  } catch (e) {}
+}
+
+/* 새 서비스워커가 설치를 끝낼 때까지 기다린다 (오래 걸리면 그냥 넘어간다) */
+function swSettled(sw, ms) {
+  return new Promise(res => {
+    if (!sw) return res(null);
+    if (sw.state !== "installing") return res(sw.state);
+    const t = setTimeout(() => res(sw.state), ms);
+    sw.addEventListener("statechange", () => {
+      if (sw.state !== "installing") { clearTimeout(t); res(sw.state); }
+    });
+  });
+}
+
+async function checkUpdate(btn) {
+  if (!navigator.onLine) { toast("인터넷에 연결되어 있지 않습니다. 연결한 뒤 다시 눌러 주세요."); return; }
+  btn.disabled = true;
+  btn.textContent = "확인하는 중…";
+  /* 등록이 없거나 조회가 늦으면 여기서 멈추지 않고 안내만 한다 */
+  const reg = await Promise.race([
+    navigator.serviceWorker.getRegistration().catch(() => null),
+    new Promise(r => setTimeout(() => r(null), 10000))
+  ]);
+  if (!reg) {
+    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    toast("아직 설치가 끝나지 않았습니다. 앱을 닫았다 연 뒤에 다시 눌러 주세요.", 6000); return;
+  }
+  try {
+    await reg.update();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    toast("확인하지 못했습니다. 잠시 뒤 다시 눌러 주세요."); return;
+  }
+  await swSettled(reg.installing || reg.waiting, 20000);
+  btn.disabled = false;
+  if (reg.waiting) {
+    btn.textContent = "새 판으로 바꾸기";
+    btn.classList.add("go");
+    btn.onclick = () => {
+      btn.disabled = true;
+      btn.textContent = "바꾸는 중…";
+      navigator.serviceWorker.addEventListener("controllerchange", () => location.reload(), { once: true });
+      reg.waiting.postMessage({ type: "skipWaiting" });
+    };
+    toast("새 법령 판을 받았습니다. 버튼을 한 번 더 누르면 바로 바뀝니다.", 7000);
+  } else {
+    btn.textContent = "법령 업데이트 확인";
+    toast("최신입니다. 새로 올라온 판이 없습니다.");
+  }
 }
 
 /* ---------------- 리더 ---------------- */
@@ -729,8 +834,9 @@ function start() {
   const groups = ["전체"].concat([...new Set(DOCS.map(d => d.군))]);
   $("#chips").innerHTML = groups.map(g =>
     '<button class="chip" data-g="' + esc(g) + '" aria-pressed="' + (g === "전체") + '">' + esc(g) + "</button>").join("");
-  const newest = DOCS.map(d => d.시행일).sort().slice(-1)[0] || "";
-  $("#stamp").textContent = "오프라인";
+  NEWEST = DOCS.map(d => d.시행일).sort().slice(-1)[0] || "";
+  BASIS = DOCS.map(d => d.수집일).filter(Boolean).sort().slice(-1)[0] || "";
+  $("#stamp").textContent = BASIS ? BASIS + " 기준" : "오프라인";
   const z = store.get("tblsize", 0);
   if (z) document.documentElement.style.setProperty("--tblsize", z + "px");
   const th = store.get("theme", null);

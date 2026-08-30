@@ -6,7 +6,7 @@
 원문 전체를 gzip+base64로 파일 안에 넣고, 앱이 열릴 때 기기 안에서 펼친다.
 산출물: dist/산안법-조문찾기.html
 """
-import base64, gzip, io, json, os, sys
+import base64, gzip, io, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -58,8 +58,12 @@ def collect():
 def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표 표의 줄 끝 공백을 정리한다."""
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
-                "조문", "별표", "약호", "단계", "군"}
+                "수집일", "조문", "별표", "약호", "단계", "군"}
     for d in docs:
+        # 언제 받아온 원문인지는 앱이 화면에 보여 줘야 한다. 출처 문자열에서 날짜만 빼 둔다.
+        m = re.search(r"수집일\s*(\d{4}-\d{2}-\d{2})", d.get("출처") or "")
+        if m:
+            d["수집일"] = m.group(1)
         for k in list(d):
             if k not in keep_doc:
                 del d[k]

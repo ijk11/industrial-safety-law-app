@@ -120,6 +120,11 @@ self.addEventListener("activate", e => {{
   );
 }});
 
+/* 「새 판으로 바꾸기」 를 눌렀을 때. 기다리지 않고 바로 이 판으로 넘어간다. */
+self.addEventListener("message", e => {{
+  if (e.data && e.data.type === "skipWaiting") self.skipWaiting();
+}});
+
 self.addEventListener("fetch", e => {{
   const req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
