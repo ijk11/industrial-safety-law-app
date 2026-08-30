@@ -133,13 +133,22 @@
   // 법령 판 — 언제 받아온 원문인지 밝히는 칸
   document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(400);
   const stamp = txt($$("#stamp"));
-  ok("헤더에 기준일 표시", /^\d{4}-\d{2}-\d{2} 기준$/.test(stamp), stamp);
+  ok("헤더에 업데이트 날짜", /^업데이트 \d{4}-\d{2}-\d{2}$/.test(stamp), stamp);
   const vb = $$(".verbox");
-  ok("저장 탭에 법령 판 칸", !!vb && /기준일/.test(txt(vb)), vb ? txt(vb).slice(0, 60) : "-");
+  ok("저장 탭에 법령 판 칸", !!vb && /업데이트/.test(txt(vb)), vb ? txt(vb).slice(0, 60) : "-");
   ok("법령 판에 담긴 법령 수", !!vb && new RegExp(DOCS.length + "건").test(txt(vb)),
      vb ? txt(vb).slice(0, 90) : "-");
   ok("법령 판에 가장 늦은 시행일", !!vb && /가장 늦은 시행일 \d{4}-\d{2}-\d{2}/.test(txt(vb)));
   ok("법령 업데이트 버튼", !!$$(".verbtn"), $$(".verbtn") ? txt($$(".verbtn")) : "-");
+
+  // 조문 상단 시행일
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(250);
+  await type("38"); cards()[0].click(); await wait(400);
+  const rw = $$("#rbody .rwhen");
+  ok("조문 상단에 시행일", !!rw && /^(이 조문 )?시행 \d{4}-\d{2}-\d{2}$/.test(txt(rw)), txt(rw));
+  const bodyEl = $$("#rbody");
+  ok("아래 중복 시행일 없음", !!bodyEl && !/이 조문의 시행일/.test(txt(bodyEl)));
+  history.back(); await wait(400);
 
   // 글꼴
   try {
