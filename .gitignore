@@ -1,0 +1,6 @@
+.fontcache/
+.probe/
+shots/
+__pycache__/
+*.pyc
+web/__*.html
