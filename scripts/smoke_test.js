@@ -90,6 +90,46 @@
   document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(300);
   ok("저장 탭에 표시", document.querySelectorAll("#v-saved .card").length > 0);
 
+  // 뒤로가기 — 홈 화면에 설치하면 브라우저 버튼이 없어서 쓸어넘기기가 유일한 뒤로가기다.
+  // 온 길이 전부 히스토리에 남아야 한 단계씩 되짚고 마지막에 앱을 나간다.
+  const curTab = () => {
+    const b = document.querySelector('nav.tabs button[aria-selected="true"]');
+    return b ? b.dataset.tab : "(없음)";
+  };
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(250);
+  document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(350);
+  document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(350);
+  history.back(); await wait(350);
+  ok("뒤로가기: 탭 한 단계", curTab() === "index", curTab());
+  history.back(); await wait(350);
+  ok("뒤로가기: 탭 두 단계", curTab() === "search", curTab());
+
+  document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(350);
+  /* 앞 검사가 법령 하나를 열어 둔 채로 왔을 수 있다. 목록 상태로 맞추고 시작한다 */
+  if (document.querySelector("#idxback")) { document.querySelector("#idxback").click(); await wait(450); }
+  ok("목차: 빵부스러기로 법령 목록 복귀", !!document.querySelector("#v-index [data-doc]"));
+  document.querySelector("#v-index [data-doc]").click(); await wait(450);
+  ok("뒤로가기: 목차 안으로 진입", !!document.querySelector("#idxback"));
+  history.back(); await wait(450);
+  ok("뒤로가기: 목차 법령 목록 복귀",
+     !document.querySelector("#idxback") && document.querySelectorAll("#v-index .row").length >= 29,
+     document.querySelectorAll("#v-index .row").length + "건");
+
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(250);
+  await type("38"); cards()[0].click(); await wait(400);
+  const a0 = txt($$("#rno"));
+  $$("#next").click(); await wait(400);
+  const a1 = txt($$("#rno"));
+  $$("#next").click(); await wait(400);
+  ok("이전/다음 조문 이동", a0 !== a1 && txt($$("#rno")) !== a1,
+     a0 + " → " + a1 + " → " + txt($$("#rno")));
+  history.back(); await wait(450);
+  ok("뒤로가기: 다음 조문 한 단계", !$$("#reader").hidden && txt($$("#rno")) === a1, txt($$("#rno")));
+  history.back(); await wait(450);
+  ok("뒤로가기: 처음 본 조문으로", !$$("#reader").hidden && txt($$("#rno")) === a0, txt($$("#rno")));
+  history.back(); await wait(450);
+  ok("뒤로가기: 조문 닫힘", $$("#reader").hidden);
+
   // 글꼴
   try {
     await document.fonts.ready;
