@@ -193,16 +193,21 @@ def splash_links():
 
 
 def asset_list():
-    """web/ 안에 실제로 있는 파일을 훑어 캐시 목록을 만든다. 빠뜨릴 일이 없다."""
+    """web/ 안에 실제로 있는 파일을 훑어 캐시 목록을 만든다. 빠뜨릴 일이 없다.
+
+    os.walk 이 폴더를 돌려주는 차례는 파일시스템에 달렸다 — 내 컴퓨터와 CI 가
+    다른 차례로 적으면 sw.js 가 달라져, 같은 원문인데도 판이 갈린 것처럼 보인다.
+    이름순으로 못 박는다.
+    """
     skip = {"sw.js", "index.html", "robots.txt", ".nojekyll"}
-    out = ["./", "./index.html"]
+    rest = []
     for base, _, files in os.walk(WEB):
-        for fn in sorted(files):
+        for fn in files:
             rel = os.path.relpath(os.path.join(base, fn), WEB).replace(os.sep, "/")
             if rel in skip or rel.startswith("__"):
                 continue
-            out.append("./" + rel)
-    return out
+            rest.append("./" + rel)
+    return ["./", "./index.html"] + sorted(rest)
 
 
 def main():
