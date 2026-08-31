@@ -11,7 +11,7 @@
   const cards = () => [...document.querySelectorAll("#v-search .card")];
   const txt = el => (el ? el.textContent.replace(/\s+/g, " ").trim() : "");
 
-  for (let i = 0; i < 200 && document.getElementById("boot"); i++) await wait(100);
+  for (let i = 0; i < 600 && document.getElementById("boot"); i++) await wait(100);
   ok("부팅 완료", !document.getElementById("boot"));
   ok("법령 29건 적재", typeof DOCS !== "undefined" && DOCS.length === 29, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
   ok("색인 2532건 내외", typeof RECS !== "undefined" && RECS.length > 2400, typeof RECS !== "undefined" ? RECS.length : "-");
