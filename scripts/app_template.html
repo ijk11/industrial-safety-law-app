@@ -462,7 +462,7 @@ function renderSearch() {
   if (!q) {
     /* 첫 화면은 비워 둔다 — 찾는 법 한 줄, 바로가기 여섯, 최근 셋. 법령 목록은 목차 탭 몫이다. */
   
-    h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
+    let h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
       const di = DOCS.findIndex(d => d.법령명 === q3[0]);
       const r = RECS.find(x => x.d === di && x.kind === 0 && x.no === q3[1]);
       return r ? '<button data-key="' + r.key + '"><span class="k">' + esc(DOCS[di].약호 + " " + q3[1]) +
