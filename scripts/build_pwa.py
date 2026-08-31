@@ -6,7 +6,7 @@
 web/ 폴더를 통째로 GitHub Pages에 올리면 끝. 첫 실행 때 원문·글꼴을 통째로
 캐시에 넣으므로, 그 뒤로는 비행기모드에서도 열린다. 실행 중 바깥 통신은 없다.
 """
-import gzip, hashlib, io, json, os, shutil, sys
+import hashlib, io, json, os, shutil, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
@@ -208,9 +208,9 @@ def asset_list():
 def main():
     docs = B.slim(B.collect())
     raw = json.dumps(docs, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    # mtime=0 — gzip 머리에 현재 시각이 박히면 원문이 그대로여도 바이트가 달라진다.
-    # 그러면 아래 version(sha256)이 매번 바뀌어, 법령이 안 바뀌었는데도 폰이 1.6MB를 다시 받는다.
-    gz = gzip.compress(raw, 9, mtime=0)
+    # 시각도 OS도 박지 않고 굽는다 (build_app.bake_gz 참고). 그것이 박히면 원문이
+    # 그대로여도 아래 version(sha256)이 바뀌어, 폰이 1.6MB를 공연히 다시 받는다.
+    gz = B.bake_gz(raw)
 
     os.makedirs(os.path.join(WEB, "data"), exist_ok=True)
     with open(os.path.join(WEB, "data", "laws.json.gz"), "wb") as f:

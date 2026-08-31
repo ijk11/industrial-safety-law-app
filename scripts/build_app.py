@@ -436,11 +436,21 @@ ART_LOADER = """async function loadLawText() {
 }"""
 
 
+def bake_gz(raw):
+    """같은 원문이면 어디서 구워도 같은 바이트가 나오게 굽는다.
+
+    mtime 을 0으로 두는 것만으로는 모자란다. gzip 머리 10번째 칸은 구운 OS 인데,
+    파이썬 3.13 부터 '알 수 없음'(0xFF)을 적고 그 전에는 3(유닉스)을 적는다.
+    그 한 바이트 때문에 판(version)이 갈려, 법이 그대로여도 폰이 1.6MB를 다시 받는다.
+    """
+    gz = gzip.compress(raw, 9, mtime=0)
+    return gz[:9] + b"\xff" + gz[10:]
+
+
 def main():
     docs = slim(collect())
     payload = json.dumps(docs, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    # mtime=0 — 같은 원문이면 같은 파일이 나오게 한다 (안 그러면 다시 구울 때마다 2.2MB가 통째로 바뀐다)
-    gz = gzip.compress(payload, 9, mtime=0)
+    gz = bake_gz(payload)
     b64 = base64.b64encode(gz).decode("ascii")
 
     with io.open(os.path.join(ROOT, "scripts", "app_template.html"), encoding="utf-8") as f:
