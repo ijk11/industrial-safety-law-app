@@ -251,7 +251,7 @@ nav.tabs svg{width:20px;height:20px}
     </div>
     <div class="searchbar">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-      <input id="q" type="search" placeholder="조문 번호나 낱말로 찾기" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="법령 검색">
+      <input id="q" type="search" placeholder="검색어 입력" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="법령 검색">
       <button class="clear" id="clear" aria-label="지우기">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
       </button>
@@ -461,9 +461,8 @@ function renderSearch() {
   const v = $("#v-search"), q = $("#q").value.trim();
   if (!q) {
     /* 첫 화면은 비워 둔다 — 찾는 법 한 줄, 바로가기 여섯, 최근 셋. 법령 목록은 목차 탭 몫이다. */
-    let h = '<p class="hint">번호로 <b>제38조</b> · 법령을 짚어 <b>령 16</b><br>' +
-      '별표는 <b>별표 3</b> · 낱말은 <b>추락 방지</b></p>';
-    h += '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
+  
+    h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
       const di = DOCS.findIndex(d => d.법령명 === q3[0]);
       const r = RECS.find(x => x.d === di && x.kind === 0 && x.no === q3[1]);
       return r ? '<button data-key="' + r.key + '"><span class="k">' + esc(DOCS[di].약호 + " " + q3[1]) +
