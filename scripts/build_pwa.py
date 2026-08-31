@@ -15,7 +15,8 @@ import build_app as B  # noqa: E402
 
 APP_NAME = "산안법 조문 찾기"
 SHORT_NAME = "산안법"
-DESC = "산업안전보건법·시행령·시행규칙·안전보건기준규칙과 고용노동부 고시 원문을 오프라인에서 찾습니다."
+DESC = ("산업안전보건법·시행령·시행규칙·안전보건기준규칙과 중대재해처벌법, "
+        "고용노동부 고시·근로감독관 집무규정 원문을 오프라인에서 찾습니다.")
 
 HEAD_EXTRA = """<meta name="description" content="{desc}">
 <meta name="robots" content="noindex, nofollow">

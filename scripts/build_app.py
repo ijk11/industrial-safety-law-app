@@ -10,18 +10,27 @@ import base64, gzip, io, json, os, re, sys, unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 법령 위계 → 배지 약호 · 색 단계 · 필터 묶음
+# 법령 위계 → 배지 약호 · 색 단계 · 필터 묶음 · 계열
+# 계열은 본문의 "법 제4조" 처럼 짧게 부른 인용을 어느 법으로 풀지 가른다.
+# 중대재해처벌법 시행령의 "법" 은 산안법이 아니라 중대재해처벌법이다.
 LEVELS = [
-    ("산업안전보건법", "법", 1, "법률"),
-    ("산업안전보건법 시행령", "령", 2, "시행령"),
-    ("산업안전보건법 시행규칙", "칙", 3, "시행규칙"),
-    ("산업안전보건기준에 관한 규칙", "기준", 4, "기준규칙"),
-    ("유해ㆍ위험작업의 취업 제한에 관한 규칙", "취업제한", 4, "취업제한규칙"),
+    ("산업안전보건법", "법", 1, "법률", "산안"),
+    ("산업안전보건법 시행령", "령", 2, "시행령", "산안"),
+    ("산업안전보건법 시행규칙", "칙", 3, "시행규칙", "산안"),
+    ("산업안전보건기준에 관한 규칙", "기준", 4, "기준규칙", "산안"),
+    ("유해ㆍ위험작업의 취업 제한에 관한 규칙", "취업제한", 4, "취업제한규칙", "산안"),
+    ("중대재해 처벌 등에 관한 법률", "중대재해", 1, "중대재해", "중대재해"),
+    ("중대재해 처벌 등에 관한 법률 시행령", "중대재해령", 2, "중대재해", "중대재해"),
 ]
 
 # 고시는 fetch_laws.py 의 나열 순서(주제별)를 그대로 따른다
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from fetch_laws import NOTICES, norm  # noqa: E402
+
+# 고시가 아닌 행정규칙은 배지와 묶음을 따로 준다
+NOTICE_LEVELS = {
+    norm("근로감독관 집무규정(산업안전보건)"): ("감독규정", 5, "감독규정"),
+}
 
 
 def load(path):
@@ -33,13 +42,13 @@ def collect():
     docs = []
     laws_dir = os.path.join(ROOT, "data", "laws")
     files = {norm(os.path.splitext(f)[0]): os.path.join(laws_dir, f) for f in os.listdir(laws_dir)}
-    for name, short, level, group in LEVELS:
+    for name, short, level, group, family in LEVELS:
         f = files.get(norm(name))
         if not f:
             print("  [건너뜀] 없음:", name)
             continue
         d = load(f)
-        d["약호"], d["단계"], d["군"] = short, level, group
+        d["약호"], d["단계"], d["군"], d["계"] = short, level, group, family
         docs.append(d)
 
     nt_dir = os.path.join(ROOT, "data", "notices")
@@ -50,7 +59,8 @@ def collect():
             print("  [건너뜀] 없음:", name)
             continue
         d = load(f)
-        d["약호"], d["단계"], d["군"] = "고시", 5, "고시"
+        d["약호"], d["단계"], d["군"] = NOTICE_LEVELS.get(norm(name), ("고시", 5, "고시"))
+        d["계"] = "산안"
         docs.append(d)
     return docs
 
@@ -378,7 +388,7 @@ def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표를 읽기 좋은 꼴로 바꾼다."""
     corpus = build_corpus(docs)
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
-                "수집일", "조문", "별표", "약호", "단계", "군"}
+                "수집일", "조문", "별표", "약호", "단계", "군", "계"}
     for d in docs:
         # 언제 받아온 원문인지는 앱이 화면에 보여 줘야 한다. 출처 문자열에서 날짜만 빼 둔다.
         m = re.search(r"수집일\s*(\d{4}-\d{2}-\d{2})", d.get("출처") or "")

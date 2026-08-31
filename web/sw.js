@@ -1,16 +1,16 @@
 /* 산안법 조문 찾기 — 오프라인 캐시. 판이 바뀌면 CACHE 이름이 바뀌고 옛 캐시는 지워진다. */
-const CACHE = "osh-742c06cb8826";
+const CACHE = "osh-1be188ce94dc";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./data/laws.json.gz",
-  "./fonts/mono.woff2",
-  "./fonts/serif-bold.woff2",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",
+  "./data/laws.json.gz",
+  "./fonts/mono.woff2",
+  "./fonts/serif-bold.woff2",
   "./splash/splash-375x667@2x-dark.png",
   "./splash/splash-375x667@2x-light.png",
   "./splash/splash-375x812@3x-dark.png",

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>산안법 조문 찾기</title>
-<meta name="description" content="산업안전보건법·시행령·시행규칙·안전보건기준규칙과 고용노동부 고시 원문을 오프라인에서 찾습니다.">
+<meta name="description" content="산업안전보건법·시행령·시행규칙·안전보건기준규칙과 중대재해처벌법, 고용노동부 고시·근로감독관 집무규정 원문을 오프라인에서 찾습니다.">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -297,7 +297,7 @@ nav.tabs svg{width:20px;height:20px}
     </div>
     <div class="searchbar">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-      <input id="q" type="search" placeholder="조문 번호나 낱말로 찾기" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="법령 검색">
+      <input id="q" type="search" placeholder="검색어 입력" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="법령 검색">
       <button class="clear" id="clear" aria-label="지우기">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
       </button>
@@ -438,7 +438,11 @@ function prepDeep() {
 }
 
 /* ---------------- 검색 ---------------- */
+/* 긴 이름을 먼저 둔다 — "중대재해 시행령 4" 가 "중대재해" 에서 잘리면 뒤가 안 읽힌다 */
 const ALIAS = [
+  [/^(중대재해처벌법\s*시행령|중대재해\s*시행령|중대재해령|중처령)\s*/, "중대재해 처벌 등에 관한 법률 시행령"],
+  [/^(중대재해처벌법|중대재해법|중처법|중대재해)\s*/, "중대재해 처벌 등에 관한 법률"],
+  [/^(근로감독관\s*집무규정|감독관\s*집무규정|집무규정|감독규정)\s*/, "근로감독관 집무규정(산업안전보건)"],
   [/^(산안법|법률|법)\s*/, "산업안전보건법"],
   [/^(시행령|령|영)\s*/, "산업안전보건법 시행령"],
   [/^(시행규칙|시규)\s*/, "산업안전보건법 시행규칙"],
@@ -452,8 +456,18 @@ function search(qRaw) {
 
   /* "법 38", "규칙 제32조의2", "별표 3" 처럼 번호로 바로 찾기 */
   let jump = [];
-  let rest = q, docName = null;
-  for (const [re, name] of ALIAS) { if (re.test(rest)) { docName = name; rest = rest.replace(re, ""); break; } }
+  let rest = q, docName = null, called = "";
+  for (const [re, name] of ALIAS) {
+    const m = re.exec(rest);
+    if (m) { docName = name; called = m[1]; rest = rest.replace(re, ""); break; }
+  }
+
+  /* 법령 이름만 친 경우 — 그 법령을 통째로 펼친다. "중대재해처벌법" 은 조문 어디에도
+     안 나오는 말이라 낱말로 찾으면 한 건도 안 나온다. "법" "기준" 처럼 한두 글자로
+     줄여 부른 것은 낱말 검색일 수도 있어 건드리지 않는다. */
+  if (docName && !rest && called.replace(/\s/g, "").length >= 3)
+    return pool.filter(r => DOCS[r.d].법령명 === docName);
+
   const mArt = /^제?\s*(\d+)\s*조?(?:\s*의\s*(\d+))?$/.exec(rest);
   const mTbl = /^별표\s*(\d+)(?:\s*의\s*(\d+))?$/.exec(rest);
   if (mArt || mTbl) {
@@ -509,16 +523,17 @@ const QUICK = [
   ["산업안전보건법", "제36조", "위험성평가"],
   ["산업안전보건법", "제29조", "안전보건교육"],
   ["산업안전보건법 시행령", "제16조", "안전관리자 선임"],
-  ["산업안전보건기준에 관한 규칙", "제42조", "추락의 방지"]
+  ["산업안전보건기준에 관한 규칙", "제42조", "추락의 방지"],
+  ["중대재해 처벌 등에 관한 법률", "제4조", "안전보건 확보의무"],
+  ["중대재해 처벌 등에 관한 법률 시행령", "제4조", "안전보건관리체계 구축"]
 ];
 
 function renderSearch() {
   const v = $("#v-search"), q = $("#q").value.trim();
   if (!q) {
     /* 첫 화면은 비워 둔다 — 찾는 법 한 줄, 바로가기 여섯, 최근 셋. 법령 목록은 목차 탭 몫이다. */
-    let h = '<p class="hint">번호로 <b>제38조</b> · 법령을 짚어 <b>령 16</b><br>' +
-      '별표는 <b>별표 3</b> · 낱말은 <b>추락 방지</b></p>';
-    h += '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
+  
+    let h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
       const di = DOCS.findIndex(d => d.법령명 === q3[0]);
       const r = RECS.find(x => x.d === di && x.kind === 0 && x.no === q3[1]);
       return r ? '<button data-key="' + r.key + '"><span class="k">' + esc(DOCS[di].약호 + " " + q3[1]) +
@@ -700,37 +715,87 @@ async function checkUpdate(btn) {
 /* ---------------- 리더 ---------------- */
 let cur = null;
 
-/* 긴 이름을 먼저 두어 "안전보건규칙"이 "규칙"으로 잘리지 않게 한다 */
-const REF_RE = /(?:「([^」]{2,30})」\s*)?(안전보건규칙|기준규칙|시행규칙|시행령|규칙|법|영|령)?\s*제(\d+)조(?:의(\d+))?/g;
-const MARKER_DOC = {
-  "법": "산업안전보건법",
-  "영": "산업안전보건법 시행령", "령": "산업안전보건법 시행령", "시행령": "산업안전보건법 시행령",
-  "규칙": "산업안전보건법 시행규칙", "시행규칙": "산업안전보건법 시행규칙",
+/* 앞에 붙은 법령 이름을 통째로 잡는다. 「」로 감싼 이름, "산안법" 처럼 줄인 이름,
+   "법" "영" 처럼 한 글자로 부른 이름, "이 규칙" "같은 법" 처럼 가리키는 말이 모두 들어온다.
+   조문과 별표를 한 번에 훑는다 — "같은 법" 이 무엇을 가리키는지는 앞의 인용이 정하기 때문이다.
+   "이" 는 앞에 띄어쓰기가 있어야 관형사다. "…라 한다)이 법 제64조" 의 "이" 는 주격조사다. */
+const REF_RE = /(?:「([^」]{2,30})」\s*)?(?:(?:^|[^가-힣])(같은\s*(?:법\s*)?)|(?:^|\s)(이\s*(?:법\s*)?))?([가-힣]{0,11}(?:법률|법|령|영|규칙|규정|지침|고시))?\s*(?:제(\d+)조(?:의(\d+))?|별표\s*(\d+)(?:의(\d+))?)/g;
+
+/* 이름을 그대로 부른 것 — 어느 법령을 읽는 중이든 가리키는 곳이 같다 */
+const NAMED_DOC = {
+  "산업안전보건법": "산업안전보건법", "산안법": "산업안전보건법",
+  "중대재해처벌법": "중대재해 처벌 등에 관한 법률", "중처법": "중대재해 처벌 등에 관한 법률",
   "안전보건규칙": "산업안전보건기준에 관한 규칙", "기준규칙": "산업안전보건기준에 관한 규칙"
 };
 
+/* "법" "영" 처럼 짧게 부른 것 — 읽고 있는 법령의 계열 안에서 푼다.
+   중대재해처벌법 시행령의 "법 제4조" 는 산안법이 아니라 중대재해처벌법이다. */
+const FAMILY_DOC = {
+  "산안": {
+    "법": "산업안전보건법",
+    "영": "산업안전보건법 시행령", "령": "산업안전보건법 시행령", "시행령": "산업안전보건법 시행령",
+    "규칙": "산업안전보건법 시행규칙", "시행규칙": "산업안전보건법 시행규칙"
+  },
+  "중대재해": {
+    "법": "중대재해 처벌 등에 관한 법률",
+    "영": "중대재해 처벌 등에 관한 법률 시행령", "령": "중대재해 처벌 등에 관한 법률 시행령",
+    "시행령": "중대재해 처벌 등에 관한 법률 시행령"
+  }
+};
+
+/* "같은 법" 이 가리키는 것 — 그 앞에서 마지막으로 「」 안에 부른 법령 이름 */
+function priorName(text, at) {
+  const i = text.lastIndexOf("「", at);
+  if (i < 0) return null;
+  const j = text.indexOf("」", i);
+  return j > i && j < at ? text.slice(i + 1, j) : null;
+}
+
+/* "같은 법 시행령" 은 방금 부른 그 법의 시행령이다 (산안법의 시행령이 아니라).
+   "같은 규칙" 처럼 이미 그 갈래를 부르고 있으면 덧붙이지 않는다. */
+const SAME_KIND = { "영": "시행령", "령": "시행령", "시행령": "시행령",
+                    "규칙": "시행규칙", "시행규칙": "시행규칙" };
+
 function linkify(html, docIdx) {
   if (html.length > 24000) return html;
-  return html.replace(REF_RE, (m, quoted, marker, n, sub) => {
+  let said = null;   /* 이 조각에서 마지막으로 부른 법령 이름 */
+  return html.replace(REF_RE, (m, quoted, same, self, marker, art, artSub, tbl, tblSub, offset) => {
     let target = docIdx;
     const name = quoted || null;
     if (name) {
+      said = name;
       const f = DOCS.findIndex(d => d.법령명 === name || d.약칭 === name);
       if (f < 0) return m;
       target = f;
+    } else if (self) {
+      /* "이 규칙 별표 5" — 읽고 있는 바로 그 법령이다 */
+    } else if (same) {
+      /* 「화학물질관리법」… 같은 법 제3조 — 앞서 부른 그 법이지 산안법이 아니다.
+         앞에 부른 이름이 없거나 담지 않은 법이면 링크하지 않는다. */
+      const base = priorName(html, offset) || said;
+      if (!base) return m;
+      const kind = SAME_KIND[marker];
+      const want = !kind || base.endsWith(kind.slice(2)) ? base : base + " " + kind;
+      const f = DOCS.findIndex(d => d.법령명 === want || d.약칭 === want);
+      if (f < 0) return m;
+      target = f;
     } else if (marker) {
-      const f = DOCS.findIndex(d => d.법령명 === MARKER_DOC[marker]);
+      /* 담지 않은 법을 부른 인용("진폐법 제5조", "집무규정 제10조")은 링크하지 않는다.
+         읽고 있는 조문 안의 제5조로 잘못 보내는 것보다 그냥 두는 편이 낫다. */
+      const fam = FAMILY_DOC[(DOCS[docIdx] || {}).계] || FAMILY_DOC["산안"];
+      const want = NAMED_DOC[marker] || fam[marker];
+      said = want || marker;
+      if (!want) return m;
+      const f = DOCS.findIndex(d => d.법령명 === want);
       if (f < 0) return m;
       target = f;
     }
-    const no = "제" + n + "조" + (sub ? "의" + sub : "");
-    const rec = RECS.find(r => r.d === target && r.kind === 0 && r.no === no);
+    const no = art ? "제" + art + "조" + (artSub ? "의" + artSub : "")
+                   : "별표 " + tbl + (tblSub ? "의" + tblSub : "");
+    const rec = RECS.find(r => r.d === target && r.kind === (art ? 0 : 1) && r.no === no);
     if (!rec) return m;
-    return m.replace(/제\d+조(의\d+)?/, s => '<a class="ref" data-key="' + rec.key + '">' + s + "</a>");
-  }).replace(/별표\s*(\d+)(?:의(\d+))?/g, (m, n, sub) => {
-    const no = "별표 " + n + (sub ? "의" + sub : "");
-    const rec = RECS.find(r => r.d === docIdx && r.kind === 1 && r.no === no);
-    return rec ? '<a class="ref" data-key="' + rec.key + '">' + m + "</a>" : m;
+    return m.replace(art ? /제\d+조(의\d+)?/ : /별표\s*\d+(의\d+)?/,
+                     s => '<a class="ref" data-key="' + rec.key + '">' + s + "</a>");
   });
 }
 

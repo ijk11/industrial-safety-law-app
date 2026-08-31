@@ -58,6 +58,16 @@ def fetch(name):
     return path
 
 
+def flatten(node):
+    """별표는 원문 한 덩어리('내용')로 남기도 하고, 표로 풀려 '조각'이 되기도 한다.
+    어느 쪽이든 글자를 다 훑어야 글꼴에 빠지는 글자가 없다."""
+    if isinstance(node, str):
+        return node
+    if isinstance(node, (list, tuple)):
+        return "".join(flatten(x) for x in node)
+    return ""
+
+
 def charsets():
     """데이터에 실제로 나오는 글자만 모은다. (본문용, 제목용)"""
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -77,7 +87,7 @@ def charsets():
                     body |= set(x)
         for b in d["별표"]:
             title |= set(b["번호"] + b["제목"])
-            body |= set(b["내용"] + b["제목"])
+            body |= set(b["제목"]) | set(flatten(b.get("내용"))) | set(flatten(b.get("조각")))
     body |= title
     return body, title
 

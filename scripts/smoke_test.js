@@ -13,8 +13,13 @@
 
   for (let i = 0; i < 600 && document.getElementById("boot"); i++) await wait(100);
   ok("부팅 완료", !document.getElementById("boot"));
-  ok("법령 29건 적재", typeof DOCS !== "undefined" && DOCS.length === 29, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
-  ok("색인 2532건 내외", typeof RECS !== "undefined" && RECS.length > 2400, typeof RECS !== "undefined" ? RECS.length : "-");
+  ok("법령 32건 적재", typeof DOCS !== "undefined" && DOCS.length === 32, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
+  ok("색인 2641건 내외", typeof RECS !== "undefined" && RECS.length > 2500, typeof RECS !== "undefined" ? RECS.length : "-");
+  for (const nm of ["중대재해 처벌 등에 관한 법률", "중대재해 처벌 등에 관한 법률 시행령",
+                    "근로감독관 집무규정(산업안전보건)"]) {
+    const d = DOCS.find(x => x.법령명 === nm);
+    ok("담김: " + nm, !!d && d.조문.length > 10, d ? d.약호 + " · 조문 " + d.조문.length : "없음");
+  }
 
   await type("추락");
   ok("낱말 검색 결과 있음", cards().length > 0, cards().length + "건 표시");
@@ -26,6 +31,17 @@
 
   await type("령 16");
   ok("법령 지정 바로가기 → 령 제16조", /제16조/.test(txt(cards()[0])) && /안전관리자/.test(txt(cards()[0])), txt(cards()[0]).slice(0, 40));
+
+  await type("중대재해 4");
+  ok("중대재해처벌법 바로가기 → 제4조", /제4조/.test(txt(cards()[0])) && /확보의무/.test(txt(cards()[0])), txt(cards()[0]).slice(0, 40));
+
+  await type("감독규정 16");
+  ok("집무규정 바로가기 → 제16조", /제16조/.test(txt(cards()[0])), txt(cards()[0]).slice(0, 40));
+
+  await type("중대재해처벌법");
+  ok("법령 이름만 치면 그 법령을 펼침",
+     hits.length > 10 && hits.every(r => DOCS[r.d].법령명 === "중대재해 처벌 등에 관한 법률"),
+     hits.length + "건 · 첫 결과 " + txt(cards()[0]).slice(0, 24));
 
   await type("도급인 안전조치");
   ok("여러 낱말 AND 검색", cards().length > 0, cards().length + "건");
@@ -50,6 +66,35 @@
     ok("인용 눌러 이동", txt($$("#rno")) !== before, before + " → " + txt($$("#rno")));
     history.back(); await wait(450);
     ok("뒤로가기로 복귀", txt($$("#rno")) === before, txt($$("#rno")));
+  }
+
+  // 인용을 어느 법으로 푸는가 — 짧게 부른 이름은 읽고 있는 법령의 계열 안에서 풀어야 한다
+  {
+    const ci = DOCS.findIndex(d => d.법령명 === "중대재해 처벌 등에 관한 법률 시행령");
+    const one = linkify(esc("법 제4조제1항"), ci);
+    const key = (one.match(/data-key="([^"]+)"/) || [])[1];
+    const to = key ? BYKEY.get(key) : null;
+    ok("중대재해령의 '법'은 중대재해처벌법", !!to && DOCS[to.d].법령명 === "중대재해 처벌 등에 관한 법률",
+       to ? DOCS[to.d].약호 + " " + to.no : "링크 없음");
+
+    const far = linkify(esc("「화학물질관리법」 제9조제1항의 정보(같은 법 제52조제1항)"), 0);
+    ok("담지 않은 법의 '같은 법'은 링크 없음", !/class="ref"/.test(far), far.slice(0, 70));
+
+    const near = linkify(esc("「산업안전보건법」 제24조 및 같은 법 제64조"), 0);
+    ok("'같은 법'은 앞서 부른 법으로", (near.match(/class="ref"/g) || []).length === 2, near.slice(0, 110));
+
+    /* 별표도 앞에 붙은 이름을 봐야 한다 — 시행규칙 안의 "영 별표 7" 은 시행령의 별표다 */
+    const ri = DOCS.findIndex(d => d.법령명 === "산업안전보건법 시행규칙");
+    const tb = linkify(esc("영 별표 7에 따른 인력"), ri);
+    const tk = (tb.match(/data-key="([^"]+)"/) || [])[1];
+    const trg = tk ? BYKEY.get(tk) : null;
+    ok("별표 인용도 법령을 가려서", !!trg && DOCS[trg.d].법령명 === "산업안전보건법 시행령" && trg.no === "별표 7",
+       trg ? DOCS[trg.d].약호 + " " + trg.no : "링크 없음");
+
+    const own = linkify(esc("별표 5의 교육내용"), ri);
+    const ok2 = BYKEY.get((own.match(/data-key="([^"]+)"/) || [])[1]);
+    ok("이름 없는 별표는 읽고 있는 법령", !!ok2 && ok2.d === ri && ok2.no === "별표 5",
+       ok2 ? DOCS[ok2.d].약호 + " " + ok2.no : "링크 없음");
   }
 
   // 별표
