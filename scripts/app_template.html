@@ -126,6 +126,7 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .verbtn:disabled{color:var(--ink-3)}
 .verbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .vernote{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
+.maker{margin:14px 2px 2px;font-size:11px;color:var(--ink-3);opacity:.7;text-align:center}
 .hint{margin:30px 4px 30px;font-size:13px;line-height:2.1;color:var(--ink-3)}
 .hint b{color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:7px}
@@ -577,7 +578,8 @@ function versionBoxHTML() {
     '<div class="verline"><b>앱 판</b><span id="verhash">-</span></div></div>' +
     '<div id="vermount"></div>' +
     '<p class="vernote">법령별 시행일은 목차에서 법령마다 볼 수 있습니다. ' +
-      '개정되면 새 판이 올라오며, 평소에도 앱을 열 때 저절로 받아 둡니다.</p>';
+      '개정되면 새 판이 올라오며, 평소에도 앱을 열 때 저절로 받아 둡니다.</p>' +
+    '<p class="maker">제작: ij Kim</p>';
 }
 
 /* 버튼을 먼저 단다. 캐시·등록 조회는 환경에 따라 오래 걸리거나 영영 안 끝나기도 해서,
