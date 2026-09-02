@@ -333,6 +333,23 @@ nav.tabs svg{width:20px;height:20px}
   background:var(--surface-2);color:var(--ink-3);font-family:var(--font-ui);
   font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
 
+/* ---------- 홈 화면에 추가 권함 ---------- */
+.sheet{position:fixed;inset:0;z-index:80;display:grid;place-items:end center;
+  background:rgba(0,0,0,.38);padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.sheet[hidden]{display:none}
+.sheet .card{width:100%;max-width:420px;background:var(--ground);border-radius:15px;
+  padding:19px 18px 15px;box-shadow:var(--shadow)}
+.sheet h2{margin:0 0 10px;font-family:var(--font-serif);font-size:17px;color:var(--ink)}
+.sheet ul{margin:0 0 12px;padding:0;list-style:none}
+.sheet li{position:relative;padding-left:11px;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
+.sheet li::before{content:"·";position:absolute;left:2px;color:var(--accent);font-weight:700}
+.sheet p{margin:0 0 14px;font-size:12.5px;line-height:1.7;color:var(--ink-3)}
+.sheet p b{color:var(--ink-2);font-weight:700}
+.sheet .btns{display:flex;gap:8px}
+.sheet .btns button{flex:1;padding:12px;border:1px solid var(--line-2);border-radius:10px;
+  background:var(--surface);color:var(--ink-2);font-size:14px;font-weight:600}
+.sheet .btns button.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;transform:translateX(-50%);z-index:70;
   bottom:calc(70px + env(safe-area-inset-bottom));max-width:86%;
@@ -410,6 +427,21 @@ nav.tabs svg{width:20px;height:20px}
     </button>
   </div>
   <div class="rbody" id="rbody"></div>
+</div>
+
+<div class="sheet" id="install" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="insttitle">
+    <h2 id="insttitle">홈 화면에 추가하세요</h2>
+    <ul>
+      <li>인터넷이 끊기는 곳에서도 열립니다</li>
+      <li>저장한 조문이 지워지지 않습니다</li>
+    </ul>
+    <p id="insthow"></p>
+    <div class="btns">
+      <button id="instno">나중에</button>
+      <button id="instgo" class="go" hidden>설치</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
@@ -871,7 +903,13 @@ function renderAdv() {
   const v = $("#v-adv");
   /* 첫 화면은 갈래만 보여 준다. 성격이 저마다 달라 한 화면에 쌓으면 서로를 가린다. */
   if (!advPage) {
-    v.innerHTML = '<div class="sec">기타</div><ul class="list">' +
+    /* '기타' 라는 이름표는 탭에 이미 있다. 그 자리엔 아직 설치 안 한 사람에게 쓸모
+       있는 말을 둔다. 홈 화면에서 열고 있으면 잔소리이므로 내보이지 않는다. */
+    v.innerHTML = (installed() ? "" :
+      '<p class="advnote">홈 화면에 추가해 두면 <b>인터넷 없이 열리고, 저장한 조문도 ' +
+      '지워지지 않습니다.</b> 아이폰은 사파리 <b>공유</b> → 「홈 화면에 추가」, ' +
+      '안드로이드는 크롬 <b>⋮</b> → 「앱 설치」.</p>') +
+      '<ul class="list">' +
       advMenu("pen", "벌칙 모아보기",
         "과태료 " + penList("과").length + "개 · 형벌 " + penList("벌").length + "개 조문을 장별로") +
       advMenu("scale", "규모별 의무",
@@ -879,7 +917,7 @@ function renderAdv() {
       advMenu("ver", "법령 판 · 업데이트",
         "기준일 " + (BASIS || "-") + " · 담긴 법령 " + DOCS.length + "건 · 새 판 확인") +
       "</ul>" +
-      '<p class="by">제작: 김익중</p>';
+      '<p class="by">제작: 김익중(kij@kosha.or.kr)</p>';
     return;
   }
   let h = '<div class="crumb"><button id="advback">기타</button><span>›</span><span>' +
@@ -1007,7 +1045,7 @@ const CHANGES = [
   ["2026-08-31", ["중대재해처벌법 계열·근로감독관 집무규정 추가 (32건)",
                   "빌드 환경에 따라 판이 갈리던 문제 해결"]],
   ["2026-08-30", ["별표 괘선표를 표로 변환",
-                  "법령 업데이트 직접 확인",
+                  "앱 업데이트 직접 확인",
                   "조문별 시행일 표시",
                   "뒤로가기 전면 적용",
                   "최초 공개"]]
@@ -1044,7 +1082,7 @@ function mountVersion() {
   if (mount && "serviceWorker" in navigator && location.protocol !== "file:") {
     const btn = document.createElement("button");
     btn.className = "verbtn";
-    btn.textContent = "법령 업데이트 확인";
+    btn.textContent = "앱 업데이트 확인";
     btn.onclick = () => checkUpdate(btn);
     mount.appendChild(btn);
   }
@@ -1086,13 +1124,13 @@ async function checkUpdate(btn) {
     new Promise(r => setTimeout(() => r(null), 10000))
   ]);
   if (!reg) {
-    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    btn.disabled = false; btn.textContent = "앱 업데이트 확인";
     toast("아직 설치가 끝나지 않았습니다. 앱을 닫았다 연 뒤에 다시 눌러 주세요.", 6000); return;
   }
   try {
     await reg.update();
   } catch (e) {
-    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    btn.disabled = false; btn.textContent = "앱 업데이트 확인";
     toast("확인하지 못했습니다. 잠시 뒤 다시 눌러 주세요."); return;
   }
   await swSettled(reg.installing || reg.waiting, 20000);
@@ -1108,7 +1146,7 @@ async function checkUpdate(btn) {
     };
     toast("새 법령 판을 받았습니다. 버튼을 한 번 더 누르면 바로 바뀝니다.", 7000);
   } else {
-    btn.textContent = "법령 업데이트 확인";
+    btn.textContent = "앱 업데이트 확인";
     toast("최신입니다. 새로 올라온 판이 없습니다.");
   }
 }
@@ -1428,6 +1466,42 @@ function onQuery() {
   }, q.length <= 1 ? 220 : 110);
 }
 
+/* ---------------- 홈 화면에 추가 권함 ----------------
+   브라우저 탭으로 열면 사파리가 이레 뒤 저장한 것을 지운다. 홈 화면에 두면 그 앱만의
+   자리를 갖게 되어 지워지지 않고, 오프라인도 더 든든하다. 그래서 권한다.
+
+   이미 홈 화면에서 열고 있으면 띄우지 않는다 — 그 사람에게는 잔소리다.
+   한 번 물리면 다시 묻지 않는다. 안드로이드·PC 크롬은 앱이 설치 창을 직접 띄울 수
+   있지만(beforeinstallprompt), 아이폰 사파리는 그런 길이 없어 방법만 일러 준다. */
+let instPrompt = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); instPrompt = e; });
+
+function installed() {
+  return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+}
+
+function maybeInstall() {
+  if (installed() || store.get("instOff", false)) return;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const how = ios
+    ? '사파리 아래 <b>공유</b> 단추를 누르고 <b>「홈 화면에 추가」</b>를 고르세요.'
+    : instPrompt
+      ? '아래 <b>설치</b>를 누르면 끝납니다.'
+      : '브라우저 메뉴(<b>⋮</b>)에서 <b>「앱 설치」</b> 또는 <b>「홈 화면에 추가」</b>를 고르세요.';
+  $("#insthow").innerHTML = how;
+  $("#instgo").hidden = !instPrompt;
+  $("#install").hidden = false;
+
+  $("#instno").onclick = () => { store.set("instOff", true); $("#install").hidden = true; };
+  $("#instgo").onclick = async () => {
+    $("#install").hidden = true;
+    store.set("instOff", true);
+    try { instPrompt.prompt(); await instPrompt.userChoice; } catch (e) {}
+    instPrompt = null;
+  };
+}
+
 function start() {
   const groups = ["전체"].concat([...new Set(DOCS.map(d => d.군))]);
   $("#chips").innerHTML = groups.map(g =>
@@ -1525,6 +1599,7 @@ function start() {
   history.replaceState({ i: 0 }, "", "");
   $("#boot").remove();
   $("#app").hidden = false;
+  maybeInstall();
 }
 
 let toastTimer = null;

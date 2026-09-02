@@ -13,6 +13,19 @@
 
   for (let i = 0; i < 600 && document.getElementById("boot"); i++) await wait(100);
   ok("부팅 완료", !document.getElementById("boot"));
+
+  /* 브라우저로 열면 홈 화면에 추가하라고 권한다. 뒤 검사들이 막히지 않게 여기서 물린다.
+     한 번 물리면 다시 묻지 않아야 한다 — 열 때마다 뜨면 그것이 더 나쁘다. */
+  const sheet = $$("#install");
+  ok("홈 화면 추가 권함", !!sheet && !sheet.hidden);
+  ok("권하는 까닭 두 가지",
+     document.querySelectorAll("#install li").length === 2,
+     [...document.querySelectorAll("#install li")].map(e => txt(e)).join(" / "));
+  ok("기기에 맞는 방법 안내", /홈 화면에 추가|앱 설치/.test(txt($$("#insthow"))), txt($$("#insthow")).slice(0, 40));
+  $$("#instno").click(); await wait(250);
+  ok("나중에 누르면 닫힘", $$("#install").hidden);
+  ok("다시 묻지 않게 적어 둠", store.get("instOff", false) === true);
+  ok("이미 설치했으면 아예 안 물음", typeof installed === "function" && !installed());
   ok("법령 32건 적재", typeof DOCS !== "undefined" && DOCS.length === 32, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
   ok("색인 2641건 내외", typeof RECS !== "undefined" && RECS.length > 2500, typeof RECS !== "undefined" ? RECS.length : "-");
   for (const nm of ["중대재해 처벌 등에 관한 법률", "중대재해 처벌 등에 관한 법률 시행령",
@@ -315,6 +328,9 @@
   // 기타 탭 — 갈래를 고른 뒤에 들어간다
   document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(500);
   ok("기타 탭 열림", !$$("#v-adv").hidden && document.querySelectorAll("nav.tabs button").length === 3);
+  ok("'기타' 글자 자리에 설치 안내",
+     !$$("#v-adv .sec") && /홈 화면에 추가/.test(txt($$("#v-adv .advnote"))),
+     txt($$("#v-adv .advnote")).slice(0, 34));
   ok("첫 화면은 갈래 셋만",
      document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
@@ -380,7 +396,8 @@
   history.back(); await wait(450);
   $$("#advback").click(); await wait(500);
   ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 3);
-  ok("기타 탭 아래에 만든 사람", txt($$("#v-adv .by")) === "제작: 김익중", txt($$("#v-adv .by")));
+  /* 연락처가 뒤에 붙을 수 있다. 이름이 밝혀져 있는지만 본다 */
+  ok("기타 탭 아래에 만든 사람", /^제작: 김익중/.test(txt($$("#v-adv .by"))), txt($$("#v-adv .by")));
 
   // 법령 판 · 업데이트
   $$('#v-adv [data-adv-go="ver"]').click(); await wait(600);
