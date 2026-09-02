@@ -1,9 +1,8 @@
 /* 산안법 조문 찾기 — 오프라인 캐시. 판이 바뀌면 CACHE 이름이 바뀌고 옛 캐시는 지워진다. */
-const CACHE = "osh-d24498a4f51b";
+const CACHE = "osh-c4c740b7d421";
 const ASSETS = [
   "./",
   "./index.html",
-  "./_smoke_tmp.js",
   "./data/laws.json.gz",
   "./fonts/mono.woff2",
   "./fonts/serif-bold.woff2",

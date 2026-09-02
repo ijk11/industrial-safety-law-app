@@ -206,6 +206,19 @@ def _targets(text):
     return [(a, h) for a, h in out if h or a not in withhang]
 
 
+# 위반행위 칸은 "가. 법 제10조제3항 후단을 위반하여 …한 경우" 꼴이다. 앞의 표지와
+# 법조문 인용을 떼면 "…한 경우" 만 남는다 — 조문 밑에 붙일 때 그 조문 번호는 이미
+# 알고 있으니 되풀이할 것이 없고, 무엇을 어겼을 때인지만 남으면 된다.
+CUT = re.compile(r"^법\s*제\d+조.*?(?:(?:을|를)\s*위반하여|에\s*따른|에\s*따라)\s*")
+
+
+def _when(act):
+    t = re.sub(r"^[가-힣](?:의\d+)?\.\s*", "", _clean(act))
+    t = re.sub(r"법 ?제(\d+)제(\d+)항", r"법 제\1조제\2항", t)   # 원문 오타 보정
+    t = CUT.sub("", t, count=1)
+    return t
+
+
 def 과태료(docs):
     dec = next((d for d in docs if d.get("법령명") == DEC), None)
     if not dec:
@@ -215,9 +228,10 @@ def 과태료(docs):
         act = _join([ln[0] for ln in row])
         base = _join([ln[1] for ln in row])
         cases, flat = _fine(row)
+        when = _when(act)
         for art, hang in _targets(act):
             got.append({"t": "과", "조": art, "항": hang,
-                        "일": act, "근거": base,
+                        "일": act, "때": when, "근거": base,
                         **({"때들": cases} if cases else {"돈": flat})})
     return got
 

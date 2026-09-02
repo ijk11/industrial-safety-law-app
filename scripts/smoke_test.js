@@ -276,6 +276,23 @@
   history.back(); await wait(400);
 
   await type("법 119"); cards()[0].click(); await wait(450);
+  /* 금액만 있으면 남 얘기처럼 읽힌다. 무엇을 했을 때인지가 늘 붙어야 한다 */
+  {
+    const fines = [];
+    for (const key of ["법 15", "법 64", "법 119", "법 17", "법 42"]) {
+      await type(key); cards()[0].click(); await wait(450);
+      fines.push(...[...document.querySelectorAll("#rbody .pen")]
+        .filter(e => /과태료/.test(txt(e))).map(e => e.querySelector(".when")));
+      history.back(); await wait(400);
+    }
+    ok("과태료마다 '~인 경우'가 붙음",
+       fines.length > 0 && fines.every(w => w && /경우|때/.test(txt(w))),
+       fines.length + "곳 · " + (fines[0] ? txt(fines[0]).slice(0, 40) : "-"));
+    ok("법조문 인용을 되풀이하지 않음",
+       fines.every(w => !/^법 제\d+조/.test(txt(w))),
+       fines.map(w => txt(w).slice(0, 14)).slice(0, 3).join(" / "));
+  }
+
   ok("제119조 과태료 — 공사금액 기준 1차",
      /공사금액의 100분의 5/.test(txt($$("#rbody .pen"))) && /200만원/.test(txt($$("#rbody .pen"))),
      txt($$("#rbody .pen")).slice(0, 70));

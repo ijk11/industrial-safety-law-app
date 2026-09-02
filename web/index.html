@@ -249,6 +249,7 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
   font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--accent-ink);background:var(--t3)}
 .pen .tag.fine{background:var(--t5)}
 .pen .lim{color:var(--ink-3)}
+.pen .when{display:block;margin:3px 0 5px;font-size:13px;line-height:1.6;color:var(--ink)}
 .pen .cha{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .pen .src{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-3)}
 .pen .open{margin-top:5px;font-size:12.5px;font-weight:600;color:var(--accent)}
@@ -1286,7 +1287,9 @@ function penHTML(list, d) {
         (it.때 ? ' <span class="lim">— ' + esc(it.때) + " 경우</span>" : "") +
         '<span class="src">' + esc(it.근거) + "</span></div>";
     }
-    const head = '<div class="pen"><span class="tag fine">과태료</span>';
+    /* 무엇을 했을 때 물리는지를 밝힌다 — 금액만 있으면 남 얘기처럼 읽힌다 */
+    const head = '<div class="pen"><span class="tag fine">과태료</span>' +
+      (it.때 ? '<span class="when">' + esc(it.때) + "</span>" : "");
     if (it.돈) {
       return head + chaHTML(it.돈) + '<span class="src">' + esc(it.근거) + "</span></div>";
     }
