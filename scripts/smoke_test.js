@@ -134,7 +134,17 @@
   await type("38"); cards()[0].click(); await wait(300);
   $$("#rstar").click(); await wait(150);
   ok("책갈피 저장", $$("#rstar").classList.contains("on"));
-  history.back(); await wait(300);
+  /* 저장했는데 화면이 그대로면 "저장이 안 됐다" 로 보인다. 알려 주어야 한다. */
+  ok("저장하면 알려 준다", !$$("#toast").hidden && /저장했습니다/.test(txt($$("#toast"))),
+     txt($$("#toast")));
+  history.back(); await wait(400);
+  /* 검색 중에도 저장한 조문으로 갈 길이 있어야 한다 */
+  const go = $$("#savego");
+  ok("결과 화면에 저장한 조문 줄", !!go && /저장한 조문 1/.test(txt(go)), go ? txt(go) : "(없음)");
+  ok("목록은 다시 그리지 않는다", document.querySelectorAll("#v-search .card").length > 10,
+     document.querySelectorAll("#v-search .card").length + "장");
+  go.click(); await wait(700);
+  ok("눌러서 저장한 조문으로", $$("#q").value === "" && !!$$("#savefold"));
   await type(""); await wait(400);
   const head = $$("#savefold");
   ok("검색 첫 화면에 저장한 조문", !!head && /저장한 조문 1/.test(txt(head)), head ? txt(head) : "머리 없음");
