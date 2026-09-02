@@ -98,8 +98,17 @@ jobs:
         run: |
           tag="${{ steps.v.outputs.tag }}"
           file="${{ steps.f.outputs.file }}"
+
+          # 태그를 지우면 그 릴리스는 사라지지 않고 "초안" 으로 남는다. 초안은 밖에서
+          # 보이지 않아 아무도 못 받는다. 쓰다 만 초안이 걸려 있으면 지우고 새로 낸다.
+          # 이미 나가 있는(초안이 아닌) 판은 건드리지 않는다 — 내려받은 횟수가 지워진다.
+          if [ "$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+            echo "쓰다 만 초안이 남아 있어 지우고 새로 냅니다: $tag"
+            gh release delete "$tag" --yes --cleanup-tag=false
+          fi
+
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "이미 있는 판이라 파일만 바꿔 답니다: $tag"
+            echo "이미 나가 있는 판이라 파일만 바꿔 답니다: $tag"
             gh release upload "$tag" "$file" --clobber
           else
             gh release create "$tag" "$file" --title "산안법 조문 찾기 $tag" --notes-file notes.md
@@ -113,12 +122,15 @@ jobs:
         run: |
           tag="${{ steps.v.outputs.tag }}"
           want="${{ steps.f.outputs.file }}"
+          # 이름이 "-" 로 시작하면 CLI 가 옵션으로 오해한다. "--" 로 끊어 준다.
+          # 여기서 실패해도 릴리스 자체는 이미 제대로 나갔으니 판을 세우지 않는다.
           gh release view "$tag" --json assets --jq '.assets[].name' | while read -r a; do
             if [ -n "$a" ] && [ "$a" != "$want" ]; then
               echo "걷어냅니다: $a"
-              gh release delete-asset "$tag" "$a" --yes
+              gh release delete-asset "$tag" --yes -- "$a" || echo "::warning::걷어내지 못했습니다: $a"
             fi
           done
+          true
 
       - name: 내려받은 횟수 적어 두기
         env:
