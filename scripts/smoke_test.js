@@ -121,6 +121,9 @@
   // 목차
   document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(300);
   ok("목차: 법령 목록", document.querySelectorAll("#v-index .row").length >= 29, document.querySelectorAll("#v-index .row").length + "건");
+  ok("목차: 시행일과 공포일",
+     [...document.querySelectorAll("#v-index .row .s")].every(e => /시행 \d{4}-\d{2}-\d{2} · 공포 \d{4}-\d{2}-\d{2}/.test(txt(e))),
+     txt(document.querySelector("#v-index .row .s")));
   document.querySelector("#v-index [data-doc]").click(); await wait(400);
   ok("목차: 조문 격자", document.querySelectorAll("#v-index .artgrid button").length > 100,
      document.querySelectorAll("#v-index .artgrid button").length + "개");
@@ -132,8 +135,20 @@
   $$("#rstar").click(); await wait(150);
   ok("책갈피 저장", $$("#rstar").classList.contains("on"));
   history.back(); await wait(300);
-  document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(300);
-  ok("저장 탭에 표시", document.querySelectorAll("#v-saved .card").length > 0);
+  await type(""); await wait(400);
+  const head = $$("#savefold");
+  ok("검색 첫 화면에 저장한 조문", !!head && /저장한 조문 1/.test(txt(head)), head ? txt(head) : "머리 없음");
+  ok("저장 카드가 보임", document.querySelectorAll("#v-search .list .card").length > 0);
+  ok("자주 찾는 조문은 없앰", !$$("#v-search .quick"));
+  /* 저장이 쌓이면 화면을 다 먹으므로 접을 수 있어야 한다 */
+  const before = document.querySelectorAll("#v-search .list .card").length;
+  head.click(); await wait(350);
+  ok("저장한 조문 접기", document.querySelectorAll("#v-search .list .card").length < before,
+     before + "장 → " + document.querySelectorAll("#v-search .list .card").length + "장");
+  await type("38"); await type(""); await wait(400);
+  ok("접은 것을 기억함", document.querySelectorAll("#v-search .list .card").length < before);
+  $$("#savefold").click(); await wait(350);
+  ok("다시 펴기", document.querySelectorAll("#v-search .list .card").length === before);
 
   // 뒤로가기 — 홈 화면에 설치하면 브라우저 버튼이 없어서 쓸어넘기기가 유일한 뒤로가기다.
   // 온 길이 전부 히스토리에 남아야 한 단계씩 되짚고 마지막에 앱을 나간다.
@@ -143,7 +158,7 @@
   };
   document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(250);
   document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(350);
-  document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(350);
+  document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(350);
   history.back(); await wait(350);
   ok("뒤로가기: 탭 한 단계", curTab() === "index", curTab());
   history.back(); await wait(350);
@@ -176,15 +191,10 @@
   ok("뒤로가기: 조문 닫힘", $$("#reader").hidden);
 
   // 법령 판 — 언제 받아온 원문인지 밝히는 칸
-  document.querySelector('nav.tabs button[data-tab="saved"]').click(); await wait(400);
   const stamp = txt($$("#stamp"));
   ok("헤더에 업데이트 날짜", /^업데이트 \d{4}-\d{2}-\d{2}$/.test(stamp), stamp);
-  const vb = $$(".verbox");
-  ok("저장 탭에 법령 판 칸", !!vb && /업데이트/.test(txt(vb)), vb ? txt(vb).slice(0, 60) : "-");
-  ok("법령 판에 담긴 법령 수", !!vb && new RegExp(DOCS.length + "건").test(txt(vb)),
-     vb ? txt(vb).slice(0, 90) : "-");
-  ok("법령 판에 가장 늦은 시행일", !!vb && /가장 늦은 시행일 \d{4}-\d{2}-\d{2}/.test(txt(vb)));
-  ok("법령 업데이트 버튼", !!$$(".verbtn"), $$(".verbtn") ? txt($$(".verbtn")) : "-");
+  ok("탭은 검색·목차·기타 셋", document.querySelectorAll("nav.tabs button").length === 3,
+     [...document.querySelectorAll("nav.tabs button")].map(b => txt(b)).join("/"));
 
   // 조문 상단 시행일
   document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(250);
@@ -247,9 +257,9 @@
   // 제12장 벌칙·과태료 — 조문 밑에 붙는다
   await type("법 38"); cards()[0].click(); await wait(450);
   const pens = [...document.querySelectorAll("#rbody .pen")];
-  ok("제38조에 벌칙 붙음", pens.length >= 2, pens.length + "개");
+  ok("제38조에 형벌 붙음", pens.length >= 2, pens.length + "개");
   ok("사망 시 가중형도 함께", pens.some(e => /7년 이하의 징역/.test(txt(e))));
-  ok("벌칙이 항 밑에 붙음",
+  ok("형벌이 항 밑에 붙음",
      !!document.querySelector("#rbody .hang + .pen"), "제1항 다음 자리");
   history.back(); await wait(400);
 
@@ -274,6 +284,94 @@
   await type("법 63"); cards()[0].click(); await wait(450);
   ok("항이 없는 조는 맨 아래에", !!document.querySelector("#rbody .art > .pen"));
   history.back(); await wait(400);
+
+  // 기타 탭 — 갈래를 고른 뒤에 들어간다
+  document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(500);
+  ok("기타 탭 열림", !$$("#v-adv").hidden && document.querySelectorAll("nav.tabs button").length === 3);
+  ok("첫 화면은 갈래 셋만",
+     document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
+     [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
+
+  $$('#v-adv [data-adv-go="pen"]').click(); await wait(500);
+  const grid = () => [...document.querySelectorAll("#v-adv .artgrid button")];
+  ok("벌칙 모아보기로 들어감", /벌칙 모아보기/.test(txt($$("#v-adv .crumb"))) && grid().length > 60, grid().length + "개");
+  const chaps = () => [...document.querySelectorAll("#v-adv .chap")];
+  ok("장별로 묶임", chaps().length >= 8 && /^제1장/.test(txt(chaps()[0])), chaps().length + "개 장 · " + txt(chaps()[0]));
+  ok("장마다 조문 수",
+     chaps().every(c => /\d+$/.test(txt(c))) &&
+     [...document.querySelectorAll("#v-adv .artgrid")].reduce((n, g) => n + g.querySelectorAll("button").length, 0) === grid().length);
+  const fineN = grid().length;
+  $$('#v-adv [data-adv="pun"]').click(); await wait(400);
+  ok("형벌로 전환", grid().length > 20 && grid().length !== fineN, grid().length + "개");
+  ok("전환 단추가 켜짐", txt($$("#v-adv .seg button.on")).indexOf("형벌") >= 0);
+  $$('#v-adv [data-adv="fine"]').click(); await wait(400);
+  ok("과태료로 되돌아옴", grid().length === fineN);
+  grid()[0].click(); await wait(500);
+  ok("모아보기에서 조문 열림", !$$("#reader").hidden && !!$$("#rbody .pen"), txt($$("#rno")).slice(0, 24));
+  history.back(); await wait(450);
+  ok("뒤로가기: 모아보기로 복귀", !!$$("#v-adv .artgrid"));
+  history.back(); await wait(500);
+  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .crumb"));
+
+  /* 상시근로자 기준표는 정리한 것이라, 근거가 실제 조문에 닿는지가 생명이다.
+     법이 개정돼 조문 번호가 바뀌면 여기서 먼저 걸린다. */
+  $$('#v-adv [data-adv-go="scale"]').click(); await wait(500);
+  ok("규모별 의무로 들어감", /규모별 의무/.test(txt($$("#v-adv .crumb"))));
+  /* 접혀 있는 칸도 DOM 에는 이미 있다. 눈에 보이는 것만 센다 */
+  const seen = () => [...document.querySelectorAll("#v-adv .scale>li")].filter(e => e.offsetParent !== null);
+  const bands = seen();
+  ok("눈금이 이어진 줄 위에", !!$$("#v-adv .scale") && bands.length === 7, bands.length + "눈금");
+  ok("눈금이 작은 수부터", txt(bands[0].querySelector(".tick")).indexOf("5명") >= 0, txt(bands[0].querySelector(".tick")));
+  ok("규모가 커지는 차례",
+     bands.map(e => parseInt(txt(e.querySelector(".tick")).replace(/,/g, ""), 10))
+       .every((n, i, a) => i === 0 || n > a[i - 1]),
+     bands.map(e => txt(e.querySelector(".tick"))).join(" → "));
+  /* 펼침 안쪽 목록까지 세지 않도록 직계 자식만 본다 */
+  ok("의무마다 근거가 붙음",
+     [...document.querySelectorAll("#v-adv .duty > li")].every(li => li.querySelector(".reflink")));
+  const dead = [...document.querySelectorAll("#v-adv .reflink.off")];
+  ok("근거가 모두 실제 조문에 닿음", dead.length === 0,
+     dead.length ? "끊김: " + dead.map(e => txt(e)).join(", ") : document.querySelectorAll("#v-adv .reflink").length + "개 모두 연결");
+  ok("건설공사 금액 기준은 접혀 있음", !!$$("#v-adv .fold") && $$("#" + $$("#v-adv .fold").dataset.sc).hidden);
+  $$("#v-adv .fold").click(); await wait(350);
+  ok("건설공사 기준을 눌러서 펼침", seen().length > bands.length,
+     bands.length + "눈금 → " + seen().length + "눈금");
+  /* 5명 미만은 무엇이 빠지는지가 핵심이다. 접혀 있다가 눌러야 펼쳐진다 */
+  const gone = $$("#v-adv .gone");
+  ok("5명 미만 상세는 접혀 있음", !!gone && gone.hidden);
+  $$("#v-adv .duty .open").click(); await wait(350);
+  ok("눌러서 무엇이 빠지는지 펼침", !$$("#v-adv .gone").hidden);
+  const gl = [...document.querySelectorAll("#v-adv .gone li")];
+  ok("빠지는 것을 조문 단위로", gl.length >= 6, gl.length + "가지");
+  ok("무엇이 왜 빠지는지 함께",
+     gl.every(li => li.querySelector(".g1") && li.querySelector(".g2")),
+     txt(gl[0].querySelector(".g1")));
+  const link = $$("#v-adv .reflink[data-key]");
+  const want = txt(link);
+  link.click(); await wait(550);
+  ok("근거를 눌러 조문으로", !$$("#reader").hidden, want + " → " + txt($$("#rwho")) + " " + txt($$("#rno")).slice(0, 16));
+  history.back(); await wait(450);
+  $$("#advback").click(); await wait(500);
+  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 3);
+  ok("기타 탭 아래에 만든 사람", txt($$("#v-adv .by")) === "제작: 김익중", txt($$("#v-adv .by")));
+
+  // 법령 판 · 업데이트
+  $$('#v-adv [data-adv-go="ver"]').click(); await wait(600);
+  const vb = $$("#v-adv .verbox");
+  ok("법령 판 칸", !!vb && /업데이트/.test(txt(vb)), vb ? txt(vb).slice(0, 50) : "-");
+  ok("담긴 법령 수", !!vb && new RegExp(DOCS.length + "건").test(txt(vb)));
+  ok("가장 늦은 시행일", !!vb && /가장 늦은 시행일 \d{4}-\d{2}-\d{2}/.test(txt(vb)));
+  ok("법령 업데이트 버튼", !!$$("#v-adv .verbtn"), $$("#v-adv .verbtn") ? txt($$("#v-adv .verbtn")) : "-");
+  ok("법령 목록은 넣지 않는다", document.querySelectorAll("#v-adv .list .row").length === 0);
+  const chg = [...document.querySelectorAll("#v-adv .chg")];
+  ok("업데이트 내역", chg.length >= 3, chg.map(e => txt(e.querySelector(".d"))).join(" / "));
+  ok("날짜가 최신부터", txt(chg[0].querySelector(".d")) > txt(chg[chg.length - 1].querySelector(".d")));
+  /* 개조식 — 한 줄로 끊어 적는다. 문장이 길어지면 훑어보는 뜻이 없어진다 */
+  const items = [...document.querySelectorAll("#v-adv .chg li")];
+  ok("개조식으로 짧게", items.every(li => txt(li).length <= 40 && !/입니다|습니다/.test(txt(li))),
+     items.map(li => txt(li).length).join(","));
+  $$("#advback").click(); await wait(500);
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(300);
 
   // 글꼴
   try {

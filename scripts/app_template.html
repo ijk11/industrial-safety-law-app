@@ -126,7 +126,18 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .verbtn:disabled{color:var(--ink-3)}
 .verbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .vernote{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
-.maker{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
+.sechead{width:100%;display:flex;align-items:center;justify-content:space-between;
+  margin:18px 0 8px;padding:0 2px;font-size:11px;letter-spacing:.09em;color:var(--ink-3);font-weight:700}
+.sechead .ar{font-size:12px;transition:transform .15s;transform:rotate(-90deg)}
+.sechead .ar.open{transform:none}
+.chg{margin:0 0 4px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.chg:last-child{border-bottom:0}
+.chg .d{font-size:11.5px;font-weight:700;color:var(--ink-3);letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
+.chg ul{margin:4px 0 0;padding:0;list-style:none}
+.chg li{position:relative;padding-left:10px;font-size:12.5px;line-height:1.65;color:var(--ink-2)}
+.chg li::before{content:"·";position:absolute;left:2px;color:var(--ink-3)}
+.by{margin:22px 2px 2px;font-size:12px;line-height:1.65;color:var(--ink-3);text-align:center}
 .hint{margin:30px 4px 30px;font-size:13px;line-height:2.1;color:var(--ink-3)}
 .hint b{color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:7px}
@@ -230,6 +241,48 @@ nav.tabs button{height:58px;display:flex;flex-direction:column;align-items:cente
 nav.tabs button[aria-selected="true"]{color:var(--accent);font-weight:700}
 nav.tabs svg{width:20px;height:20px}
 
+/* ---------- 기타 ---------- */
+.seg{display:flex;gap:6px;margin:0 0 12px}
+.seg button{flex:1;padding:9px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.advnote{margin:0 2px 12px;font-size:12.5px;line-height:1.7;color:var(--ink-3)}
+.advnote b{color:var(--ink-2);font-weight:700}
+.fold{width:100%;margin:0 0 8px;padding:12px;border:1px solid var(--line-2);border-radius:10px;
+  background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;text-align:left}
+.fold.open{border-color:var(--accent);color:var(--accent)}
+/* 규모 눈금 — 하나로 이어진 세로줄에 눈금을 찍는다.
+   줄이 끊기지 않아야 "커질수록 얹힌다"가 눈에 들어온다. */
+.scale{position:relative;margin:0;padding:2px 0 2px 22px;list-style:none}
+.scale::before{content:"";position:absolute;left:5px;top:12px;bottom:12px;width:2px;
+  background:linear-gradient(var(--line-2),var(--accent))}
+.scale>li{position:relative;padding:0 0 20px;list-style:none}
+.scale>li:last-child{padding-bottom:2px}
+.scale>li::before{content:"";position:absolute;left:-21px;top:5px;width:12px;height:12px;
+  border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--ground)}
+.scale>li.off::before{background:var(--ground);border:2px solid var(--line-2)}
+.tick{font-family:var(--font-serif);font-weight:700;font-size:15.5px;color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1.4}
+.off .tick{color:var(--ink-3)}
+.mnote{margin-top:1px;font-size:11.5px;color:var(--ink-3)}
+.duty{margin:7px 0 0;padding:0;list-style:none}
+.duty li{margin:0 0 11px;list-style:none}
+.duty li:last-child{margin-bottom:0}
+.duty .w{display:block;font-size:14px;font-weight:600;color:var(--ink);line-height:1.5}
+.duty .sub{display:block;margin-top:3px;font-size:12px;line-height:1.65;color:var(--ink-3)}
+.gone{margin:7px 0 0;padding:10px 12px;list-style:none;border-radius:8px;background:var(--surface-2)}
+.gone li{margin:0 0 9px;list-style:none}
+.gone li:last-child{margin-bottom:0}
+.gone .g1{display:block;font-size:12.5px;font-weight:700;color:var(--ink-2);line-height:1.5}
+.gone .g2{display:block;margin-top:2px;font-size:12px;line-height:1.6;color:var(--ink-3)}
+.refs{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.reflink{padding:2px 8px;border:1px solid var(--line-2);border-radius:6px;background:var(--surface-2);
+  color:var(--accent);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.reflink.off{color:var(--ink-3);text-decoration:line-through}
+.chap .cn{display:inline-block;margin-left:5px;padding:0 6px;border-radius:9px;
+  background:var(--surface-2);color:var(--ink-3);font-family:var(--font-ui);
+  font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;transform:translateX(-50%);z-index:70;
   bottom:calc(70px + env(safe-area-inset-bottom));max-width:86%;
@@ -278,7 +331,7 @@ nav.tabs svg{width:20px;height:20px}
   <main>
     <section class="view" id="v-search"></section>
     <section class="view" id="v-index" hidden></section>
-    <section class="view" id="v-saved" hidden></section>
+    <section class="view" id="v-adv" hidden></section>
   </main>
 
   <nav class="tabs" role="tablist">
@@ -286,8 +339,8 @@ nav.tabs svg{width:20px;height:20px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>검색</button>
     <button data-tab="index" role="tab" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 10h16M4 15h11M4 20h11"/></svg>목차</button>
-    <button data-tab="saved" role="tab" aria-selected="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3.8h12v16.4l-6-4.2-6 4.2z"/></svg>저장</button>
+    <button data-tab="adv" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h8M16 17h4"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="14" cy="17" r="2"/></svg>기타</button>
   </nav>
 </div>
 
@@ -323,6 +376,8 @@ let DOCS = [], RECS = [], BYKEY = new Map();
 let saved = store.get("saved", []), recent = store.get("recent", []);
 let filter = "전체", shown = 60, hits = [], tab = "search";
 let idxDoc = null, views = [];
+let advPage = null;   /* 기타 탭에서 들어와 있는 갈래 (null=첫 화면) */
+let savedOpen = store.get("savedOpen", true);   /* 저장한 조문을 펴 두었는지 */
 let hlToks = [];   /* 조문 안에 남겨 둘 형광펜 낱말 */
 let BASIS = "", NEWEST = "";
 
@@ -541,6 +596,107 @@ function clearHL() {
   if ($("#rhl")) $("#rhl").hidden = true;
 }
 
+
+/* ---------------- 규모별 의무 ----------------
+   규모에 따라 걸리는 의무가 달라지는데, 그 기준이 법·시행령·시행규칙과 별표에
+   흩어져 있어 한 번에 보기 어렵다. 여기 모아 두되 **근거를 반드시 함께 단다** —
+   이 표는 정리한 것이고, 효력은 원문에 있다.
+
+   한 의무가 업종에 따라 50·100·300명으로 갈리면 **가장 낮은 기준** 칸에 놓고
+   갈리는 사정을 주석으로 밝힌다. 높은 칸에만 두면 해당하는데도 못 보고 지나친다.
+   건설공사는 사람 수가 아니라 공사금액이 기준이라 따로 묶었다.
+
+   근거는 [법령명, 조문번호] 로 적고 화면에서 실제 조문을 찾아 잇는다. 법이 개정돼
+   번호가 바뀌면 이어지지 않으므로, 스모크 테스트가 전부 이어지는지 지킨다. */
+const LAW_ = "산업안전보건법", DEC_ = "산업안전보건법 시행령", RUL_ = "산업안전보건법 시행규칙";
+
+const SCALE = [
+  { n: "5명 미만", tone: "off", note: "아래 것들이 오히려 빠진다", items: [
+    { 일: "법의 일부가 적용되지 않음",
+      근거: [[DEC_, "제2조"], [DEC_, "별표 1"]],
+      빠짐: [
+        ["제2장 제1절 안전보건관리체제 (제14조~제24조)",
+         "이사회 보고, 안전보건관리책임자·관리감독자·안전관리자·보건관리자·안전보건관리담당자·산업보건의 선임, 산업안전보건위원회"],
+        ["제2장 제2절 안전보건관리규정 (제25조~제28조)",
+         "안전보건관리규정의 작성·변경 절차와 준수 의무"],
+        ["제3장 안전보건교육 (제29조~제33조)",
+         "정기·채용 시·작업내용 변경 시 교육. 다만 제29조제3항의 유해위험작업 추가교육은 그대로 적용된다"],
+        ["제47조 안전보건진단", "고용노동부장관의 안전보건진단 명령"],
+        ["제49조 안전보건개선계획의 수립·시행 명령", "개선계획 수립·시행 명령"],
+        ["제50조 안전보건개선계획서의 제출 등", "개선계획서 제출·심사와 준수 의무"],
+        ["제159조 영업정지의 요청 등", "관계 행정기관에 대한 영업정지 요청"]
+      ] }
+  ]},
+  { n: "10명 이상", items: [
+    { 일: "휴게시설 설치·관리기준 준수",
+      주: "전화 상담원·요양보호사·배달원 등 정해진 직종의 상시근로자가 2명 이상인 10~20명 사업장 (건설업 제외)",
+      근거: [[LAW_, "제128조의2"], [DEC_, "제96조의2"]] }
+  ]},
+  { n: "20명 이상", items: [
+    { 일: "안전보건관리담당자 선임",
+      주: "20명 이상 50명 미만 · 제조업, 임업, 하수·폐수 및 분뇨 처리업, 폐기물 수집·운반·처리 및 원료 재생업만",
+      근거: [[LAW_, "제19조"], [DEC_, "제24조"]] },
+    { 일: "휴게시설 설치·관리기준 준수",
+      주: "관계수급인 근로자를 포함해 20명 이상 · 건설업은 총공사금액 20억원 이상",
+      근거: [[LAW_, "제128조의2"], [DEC_, "제96조의2"]] }
+  ]},
+  { n: "50명 이상", tone: "key", items: [
+    { 일: "안전보건관리책임자 선임",
+      주: "업종에 따라 갈린다 — 제조업·광업 등 50명 / 농업·어업·소프트웨어 등 300명 / 그 밖의 사업 100명 / 건설업 공사금액 20억원",
+      근거: [[LAW_, "제15조"], [DEC_, "제14조"], [DEC_, "별표 2"]] },
+    { 일: "안전관리자 선임",
+      주: "별표 3의 사업 50명 이상 500명 미만이면 1명 · 건설업은 공사금액 50억원 이상(관계수급인 100억원)",
+      근거: [[LAW_, "제17조"], [DEC_, "제16조"], [DEC_, "별표 3"]] },
+    { 일: "보건관리자 선임",
+      주: "별표 5의 사업 50명 이상 500명 미만이면 1명 · 건설업은 공사금액 800억원 이상",
+      근거: [[LAW_, "제18조"], [DEC_, "제20조"], [DEC_, "별표 5"]] },
+    { 일: "산업안전보건위원회 구성·운영",
+      주: "업종에 따라 갈린다 — 토사석 광업·제조업 등 50명 / 농업·어업·소프트웨어 등 300명 / 그 밖의 사업 100명 / 건설업 공사금액 120억원",
+      근거: [[LAW_, "제24조"], [DEC_, "제34조"], [DEC_, "별표 9"]] },
+    { 일: "안전보건총괄책임자 지정 (도급한 경우)",
+      주: "관계수급인 근로자를 포함해 센다 — 선박·보트 건조업, 1차 금속 제조업, 토사석 광업은 50명 / 그 밖은 100명 / 건설업 총공사금액 20억원",
+      근거: [[LAW_, "제62조"], [DEC_, "제52조"]] }
+  ]},
+  { n: "100명 이상", items: [
+    { 일: "안전보건관리규정 작성",
+      주: "농업·어업·소프트웨어 개발 및 공급업·금융 및 보험업 등은 300명 이상",
+      근거: [[LAW_, "제25조"], [RUL_, "제25조"], [RUL_, "별표 2"]] }
+  ]},
+  { n: "300명 이상", items: [
+    { 일: "안전관리자 전담 (다른 업무를 겸할 수 없다)",
+      주: "건설업은 공사금액 120억원 이상(토목공사업 150억원 이상)",
+      근거: [[LAW_, "제17조"], [DEC_, "제16조"]] },
+    { 일: "보건관리자 전담 (다른 업무를 겸할 수 없다)",
+      근거: [[LAW_, "제18조"], [DEC_, "제20조"]] }
+  ]},
+  { n: "500명 이상", items: [
+    { 일: "대표이사의 안전·보건에 관한 계획 수립 → 이사회 보고·승인",
+      주: "시공능력 순위 상위 1천위 이내 건설회사도 규모와 상관없이 해당한다",
+      근거: [[LAW_, "제14조"], [DEC_, "제13조"]] }
+  ]}
+];
+
+/* 건설공사는 사람 수가 아니라 공사금액으로 갈린다 */
+const SCALE_C = [
+  { n: "20억원 이상", items: [
+    { 일: "안전보건관리책임자 선임", 근거: [[DEC_, "제14조"], [DEC_, "별표 2"]] },
+    { 일: "안전보건총괄책임자 지정", 주: "관계수급인의 공사금액을 포함한 총공사금액", 근거: [[DEC_, "제52조"]] },
+    { 일: "휴게시설 설치·관리기준 준수", 근거: [[DEC_, "제96조의2"]] }
+  ]},
+  { n: "50억원 이상", items: [
+    { 일: "안전관리자 선임", 주: "관계수급인은 100억원 이상 · 120억원 미만이면 1명", 근거: [[DEC_, "제16조"], [DEC_, "별표 3"]] },
+    { 일: "안전보건조정자 선임", 주: "2개 이상 건설공사를 분리 발주한 경우, 각 공사금액의 합이 50억원 이상", 근거: [[LAW_, "제68조"], [DEC_, "제56조"]] }
+  ]},
+  { n: "120억원 이상", items: [
+    { 일: "노사협의체 설치·운영", 주: "토목공사업은 150억원 이상", 근거: [[LAW_, "제75조"], [DEC_, "제63조"]] },
+    { 일: "안전관리자 전담", 주: "토목공사업은 150억원 이상", 근거: [[DEC_, "제16조"]] },
+    { 일: "산업안전보건위원회 구성·운영", 근거: [[DEC_, "제34조"], [DEC_, "별표 9"]] }
+  ]},
+  { n: "800억원 이상", items: [
+    { 일: "보건관리자 선임", 근거: [[DEC_, "제20조"], [DEC_, "별표 5"]] }
+  ]}
+];
+
 /* ---------------- 검색 화면 ---------------- */
 const QUICK = [
   ["산업안전보건법", "제38조", "안전조치"],
@@ -557,18 +713,23 @@ function renderSearch() {
   const v = $("#v-search"), q = $("#q").value.trim();
   if (!q) {
     hlToks = [];   /* 검색을 비웠으면 형광펜도 없다 */
-    /* 첫 화면은 비워 둔다 — 찾는 법 한 줄, 바로가기 여섯, 최근 셋. 법령 목록은 목차 탭 몫이다. */
-  
-    let h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
-      const di = DOCS.findIndex(d => d.법령명 === q3[0]);
-      const r = RECS.find(x => x.d === di && x.kind === 0 && x.no === q3[1]);
-      return r ? '<button data-key="' + r.key + '"><span class="k">' + esc(DOCS[di].약호 + " " + q3[1]) +
-        '</span><span class="v">' + esc(q3[2]) + "</span></button>" : "";
-    }).join("") + "</div>";
-    const rec = recent.map(k => BYKEY.get(k)).filter(Boolean).slice(0, 3);
+    /* 첫 화면은 내가 모아 둔 것으로 연다. 저장이 쌓이면 길어지므로 접을 수 있게 하고,
+       접었는지는 기억해 둔다 — 매번 다시 접는 수고를 시키지 않는다. */
+    const sv = saved.map(k => BYKEY.get(k)).filter(Boolean);
+    let h = "";
+    if (sv.length) {
+      h += '<button class="sechead" id="savefold"><span>저장한 조문 ' + sv.length + "</span>" +
+        '<span class="ar' + (savedOpen ? " open" : "") + '">▾</span></button>';
+      if (savedOpen) h += '<ul class="list">' + sv.map(r => cardHTML(r)).join("") + "</ul>";
+    } else {
+      h += '<div class="sec">저장한 조문</div>' +
+        '<div class="empty"><b>아직 없습니다</b>조문을 열고 오른쪽 위 책갈피를 누르면<br>' +
+        "현장에서 자주 보는 조문을 여기에 모아 둘 수 있습니다.</div>";
+    }
+    const rec = recent.map(k => BYKEY.get(k)).filter(Boolean);
     if (rec.length) {
       h += '<div class="sec">최근 본 조문</div><ul class="list">' +
-        rec.map(r => cardHTML(r)).join("") + "</ul>";
+        rec.slice(0, 5).map(r => cardHTML(r)).join("") + "</ul>";
     }
     h += '<button class="tocline" data-tab-go="index"><span class="grow"><em>' + DOCS.length +
       "개 법령</em> · 조문 " + RECS.filter(r => r.kind === 0).length.toLocaleString() +
@@ -609,7 +770,8 @@ function renderIndex() {
       '<button class="row" data-doc="' + i + '"><span class="badge l' + d.단계 + '">' + esc(d.약호) + '</span>' +
       '<span class="grow"><span class="t">' + esc(d.법령명) + '</span><br><span class="s">' +
       (d.조문 || []).length + "개 조문" + ((d.별표 || []).length ? " · 별표 " + d.별표.length : "") +
-      " · 시행 " + esc(d.시행일) + "</span></span>" + ARW + "</button>").join("") + "</ul>";
+      " · 시행 " + esc(d.시행일) + (d.공포일 ? " · 공포 " + esc(d.공포일) : "") +
+      "</span></span>" + ARW + "</button>").join("") + "</ul>";
     return;
   }
   const d = DOCS[idxDoc];
@@ -631,19 +793,164 @@ function renderIndex() {
   v.innerHTML = h;
 }
 
-/* ---------------- 저장 ---------------- */
-function renderSaved() {
-  const v = $("#v-saved");
-  const s = saved.map(k => BYKEY.get(k)).filter(Boolean);
-  const r2 = recent.map(k => BYKEY.get(k)).filter(Boolean);
-  let h = "";
-  h += '<div class="sec">저장한 조문 ' + s.length + "</div>";
-  h += s.length ? '<ul class="list">' + s.map(r => cardHTML(r)).join("") + "</ul>"
-    : '<div class="empty"><b>아직 없습니다</b>조문을 열고 오른쪽 위 책갈피를 누르면<br>현장에서 자주 보는 조문을 모아 둘 수 있습니다.</div>';
-  if (r2.length) h += '<div class="sec">최근 본 조문</div><ul class="list">' + r2.slice(0, 15).map(r => cardHTML(r)).join("") + "</ul>";
-  h += versionBoxHTML();
+
+/* ---------------- 기타 ----------------
+   조문을 하나씩 여는 대신 가로질러 보는 자리. 과태료·벌칙이 걸린 조문을 모아
+   보거나, 사업장 규모로 걸리는 의무를 훑는다. 둘 다 결국 조문으로 들어간다. */
+let advWhat = "fine";     /* 벌칙 모아보기에서 과태료냐 형벌이냐 */
+
+function renderAdv() {
+  const v = $("#v-adv");
+  /* 첫 화면은 갈래만 보여 준다. 성격이 저마다 달라 한 화면에 쌓으면 서로를 가린다. */
+  if (!advPage) {
+    v.innerHTML = '<div class="sec">기타</div><ul class="list">' +
+      advMenu("pen", "벌칙 모아보기",
+        "과태료 " + penList("과").length + "개 · 형벌 " + penList("벌").length + "개 조문을 장별로") +
+      advMenu("scale", "규모별 의무",
+        "5명 미만부터 500명 이상까지 · 건설공사는 공사금액으로") +
+      advMenu("ver", "법령 판 · 업데이트",
+        "기준일 " + (BASIS || "-") + " · 담긴 법령 " + DOCS.length + "건 · 새 판 확인") +
+      "</ul>" +
+      '<p class="by">제작: 김익중</p>';
+    return;
+  }
+  let h = '<div class="crumb"><button id="advback">기타</button><span>›</span><span>' +
+    esc(ADV_NAME[advPage] || "") + "</span></div>";
+  h += advPage === "pen" ? penPage()
+     : advPage === "scale" ? scaleHTML()
+     : verPage();
   v.innerHTML = h;
-  mountVersion();
+  if (advPage === "ver") mountVersion();
+  v.querySelectorAll("[data-adv]").forEach(b => b.onclick = () => { advWhat = b.dataset.adv; renderAdv(); });
+  v.querySelectorAll("[data-sc]").forEach(b => b.onclick = () => {
+    const box = $("#" + b.dataset.sc);
+    box.hidden = !box.hidden;
+    b.classList.toggle("open", !box.hidden);
+  });
+}
+
+const ADV_NAME = { pen: "벌칙 모아보기", scale: "규모별 의무",
+                   ver: "법령 판 · 업데이트" };
+
+function advMenu(id, title, sub) {
+  return '<button class="row" data-adv-go="' + id + '"><span class="grow">' +
+    '<span class="t">' + esc(title) + '</span><br><span class="s">' + esc(sub) + "</span></span>" + ARW + "</button>";
+}
+
+function penPage() {
+  return '<p class="advnote">제12장 벌칙에는 두 가지가 있습니다. ' +
+    '<b>형벌</b>은 수사·기소를 거쳐 법원이 정하고 전과가 남습니다. ' +
+    '<b>과태료</b>는 고용노동부장관이 부과하는 행정질서벌로 전과가 남지 않습니다.</p>' +
+    '<div class="seg">' +
+      '<button data-adv="fine"' + (advWhat === "fine" ? ' class="on"' : "") + ">과태료 " + penList("과").length + "</button>" +
+      '<button data-adv="pun"' + (advWhat === "pun" ? ' class="on"' : "") + ">형벌 " + penList("벌").length + "</button>" +
+    "</div>" + advGrid();
+}
+
+/* 그 벌 종류가 걸린 산안법 조문을 조 번호 차례로 모은다 */
+function penList(kind) {
+  const di = DOCS.findIndex(d => d.법령명 === "산업안전보건법");
+  if (di < 0) return [];
+  return (DOCS[di].조문 || []).map((a, ai) => ({ a, ai, di }))
+    .filter(({ a }) => {
+      const p = a.벌;
+      if (!p) return false;
+      return [].concat(...Object.values(p.항 || {}), p.끝 || []).some(it => it.t === kind);
+    });
+}
+
+function advGrid() {
+  const list = penList(advWhat === "fine" ? "과" : "벌");
+  /* 둘 다 제12장 '벌칙' 이지만 성격이 다르다 — 형벌은 전과가 남고, 과태료는 남지 않는다 */
+  const what = advWhat === "fine"
+    ? "과태료(제175조)가 따르는"
+    : "형벌(징역·벌금, 제167조~제172조)이 따르는";
+  if (!list.length) return '<div class="empty"><b>없습니다</b></div>';
+  /* 장별로 묶어 둔다. 조문 차례가 곧 장 차례라 훑기만 해도 갈린다. 걸리는 조문이
+     하나도 없는 장은 아예 나오지 않으니, 어느 장에 몰려 있는지가 그대로 보인다. */
+  let out = "", chap = null, bag = [];
+  const flush = () => {
+    if (!bag.length) return;
+    out += '<div class="chap">' + esc(chap) + ' <span class="cn">' + bag.length + "</span></div>" +
+      '<div class="artgrid">' + bag.join("") + "</div>";
+    bag = [];
+  };
+  list.forEach(({ a, ai, di }) => {
+    const c = a.장 || "";
+    if (c !== chap) { flush(); chap = c; }
+    bag.push('<button data-key="' + di + ":j:" + ai + '"><span class="n">' + esc(a.조번호) +
+      '</span><br><span class="m">' + esc(a.제목 || "") + "</span></button>");
+  });
+  flush();
+  return '<p class="advnote">' + what + " 산업안전보건법 조문 " + list.length +
+    "개입니다. 눌러서 조문과 내용을 봅니다.</p>" + out;
+}
+
+/* 근거를 실제 조문·별표에 잇는다. 못 이으면 글자만 남긴다 (법이 개정된 경우) */
+function refBtn(name, no) {
+  const r = RECS.find(x => DOCS[x.d].법령명 === name && x.no === no);
+  const d = DOCS.findIndex(x => x.법령명 === name);
+  const 약호 = d >= 0 ? DOCS[d].약호 : "";
+  const label = esc((약호 ? 약호 + " " : "") + no);
+  return r ? '<button class="reflink" data-key="' + r.key + '">' + label + "</button>"
+           : '<span class="reflink off">' + label + "</span>";
+}
+
+let scSeq = 0;
+
+/* 규모는 이어지는 축이다. 카드를 흩어 놓으면 그 이어짐이 안 보이므로 세로줄에 꿴다.
+   위에서 아래로 내려갈수록 앞의 의무가 그대로 얹힌다 — 눈금을 따라가면 그것이 보인다. */
+function scaleHTML() {
+  const stop = b => {
+    const more = b.items.filter(it => it.빠짐);
+    const id = "sc" + (scSeq++);
+    return '<li class="stop' + (b.tone === "off" ? " off" : "") + '">' +
+      '<div class="tick">' + esc(b.n) + "</div>" +
+      (b.note ? '<div class="mnote">' + esc(b.note) + "</div>" : "") +
+      '<ul class="duty">' + b.items.map(it =>
+        '<li><span class="w">' + esc(it.일) + "</span>" +
+        (it.주 ? '<span class="sub">' + esc(it.주) + "</span>" : "") +
+        '<span class="refs">' + it.근거.map(g => refBtn(g[0], g[1])).join("") + "</span>" +
+        (it.빠짐 ? '<button class="open" data-sc="' + id + '">무엇이 빠지는지 ▸</button>' +
+          '<ul id="' + id + '" class="gone" hidden>' + it.빠짐.map(x =>
+            '<li><span class="g1">' + esc(x[0]) + '</span><span class="g2">' + esc(x[1]) + "</span></li>").join("") +
+          "</ul>" : "") +
+        "</li>").join("") +
+      "</ul></li>";
+  };
+  const box = "scbox" + (scSeq++);
+  return '<p class="advnote">규모가 커질수록 <b>앞의 의무가 그대로 얹힙니다.</b> 업종에 따라 ' +
+    '기준이 갈리는 것은 <b>가장 낮은 기준</b> 눈금에 두고 그 사정을 함께 적었습니다. ' +
+    '정리한 표이니 반드시 옆의 근거 조문으로 확인하세요.</p>' +
+    '<ol class="scale">' + SCALE.map(stop).join("") + "</ol>" +
+    '<button class="fold" data-sc="' + box + '">건설공사는 공사금액이 기준입니다 ▸</button>' +
+    '<div id="' + box + '" hidden><ol class="scale">' + SCALE_C.map(stop).join("") + "</ol></div>";
+}
+
+
+/* ---------------- 법령 판 · 업데이트 ----------------
+   언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
+   내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
+const CHANGES = [
+  ["2026-09-02", ["조문별 벌칙·과태료 표시 (과태료 1·2·3차 구분)",
+                  "검색어 형광펜 유지 · 끄기 단추",
+                  "기타 탭 신설 — 벌칙 모아보기, 규모별 의무",
+                  "저장한 조문을 검색 첫 화면으로 (접기·펴기)"]],
+  ["2026-08-31", ["중대재해처벌법 계열·근로감독관 집무규정 추가 (32건)",
+                  "빌드 환경에 따라 판이 갈리던 문제 해결"]],
+  ["2026-08-30", ["별표 괘선표를 표로 변환",
+                  "법령 업데이트 직접 확인",
+                  "조문별 시행일 표시",
+                  "뒤로가기 전면 적용",
+                  "최초 공개"]]
+];
+
+function verPage() {
+  return versionBoxHTML() +
+    '<div class="chap">업데이트 내역</div>' +
+    CHANGES.map(([when, lines]) =>
+      '<div class="chg"><div class="d">' + esc(when) + "</div><ul>" +
+      lines.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul></div>").join("");
 }
 
 /* ---------------- 법령 판 ----------------
@@ -658,8 +965,7 @@ function versionBoxHTML() {
     '<div class="verline"><b>앱 판</b><span id="verhash">-</span></div></div>' +
     '<div id="vermount"></div>' +
     '<p class="vernote">법령별 시행일은 목차에서 법령마다 볼 수 있습니다. ' +
-      '개정되면 새 판이 올라오며, 평소에도 앱을 열 때 저절로 받아 둡니다.</p>' +
-    '<p class="maker">제작: ij Kim</p>';
+      '개정되면 새 판이 올라오며, 평소에도 앱을 열 때 저절로 받아 둡니다.</p>';
 }
 
 /* 버튼을 먼저 단다. 캐시·등록 조회는 환경에 따라 오래 걸리거나 영영 안 끝나기도 해서,
@@ -920,7 +1226,7 @@ function penHTML(list, d) {
   if (!list || !list.length) return "";
   return list.map(it => {
     if (it.t === "벌") {
-      return '<div class="pen"><span class="tag">벌칙</span>' + esc(it.형) +
+      return '<div class="pen"><span class="tag">형벌</span>' + esc(it.형) +
         (it.한정 ? ' <span class="lim">(' + esc(it.한정) + "에 한정)</span>" : "") +
         (it.때 ? ' <span class="lim">— ' + esc(it.때) + " 경우</span>" : "") +
         '<span class="src">' + esc(it.근거) + "</span></div>";
@@ -965,8 +1271,7 @@ function hideReader() {
   cur = null;
   document.body.style.overflow = "";
   /* 조문을 보고 나오면 첫 화면의 '최근 본 조문'이 바로 반영돼야 한다 */
-  if (tab === "saved") renderSaved();
-  else if (tab === "search" && !$("#q").value.trim()) renderSearch();
+  if (tab === "search" && !$("#q").value.trim()) renderSearch();
 }
 
 /* ---------------- 뒤로가기 ----------------
@@ -974,16 +1279,19 @@ function hideReader() {
    홈 화면에 설치하면 브라우저 뒤로가기 버튼이 없어서, 왼쪽 끝을 쓸어넘기는
    제스처가 유일한 뒤로가기다. 그래서 온 길이 전부 히스토리에 남아 있어야 한다. */
 function snapshot() {
-  return { t: tab, doc: idxDoc, key: (cur && !$("#reader").hidden) ? cur.key : null };
+  return { t: tab, doc: idxDoc, adv: advPage, key: (cur && !$("#reader").hidden) ? cur.key : null };
 }
 
 /* 히스토리를 건드리지 않고 그 상태로 되돌린다. 안 바뀐 것은 다시 그리지 않는다
    (조문에서 빠져나올 때 목록이 맨 위로 튀지 않게). */
 function applyView(v) {
   const tabChanged = tab !== v.t, docChanged = idxDoc !== v.doc;
+  const advChanged = advPage !== (v.adv || null);
   idxDoc = v.doc;
+  advPage = v.adv || null;
   if (tabChanged) setTab(v.t);
   else if (docChanged && v.t === "index") renderIndex();
+  else if (advChanged && v.t === "adv") renderAdv();
   if (v.key) showRec(v.key);
   else if (!$("#reader").hidden) hideReader();
 }
@@ -1011,10 +1319,10 @@ function setTab(t) {
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
   $("#v-search").hidden = t !== "search";
   $("#v-index").hidden = t !== "index";
-  $("#v-saved").hidden = t !== "saved";
+  $("#v-adv").hidden = t !== "adv";
   syncChips();
   if (t === "index") renderIndex();
-  if (t === "saved") renderSaved();
+  if (t === "adv") renderAdv();
   window.scrollTo(0, 0);
 }
 
@@ -1060,20 +1368,35 @@ function start() {
     shown = 60; hits = search($("#q").value); renderSearch();
   };
   document.querySelectorAll("nav.tabs button").forEach(b =>
-    b.onclick = () => { if (tab !== b.dataset.tab) go({ t: b.dataset.tab, doc: idxDoc, key: null }); });
+    b.onclick = () => { if (tab !== b.dataset.tab) go({ t: b.dataset.tab, doc: idxDoc, adv: advPage, key: null }); });
   document.addEventListener("click", e => {
     const k = e.target.closest("[data-key]");
     if (k) { openRec(k.dataset.key, e.target.closest(".ref") ? "ref" : "new"); return; }
     const g = e.target.closest("[data-tab-go]");
-    if (g) { go({ t: g.dataset.tabGo, doc: idxDoc, key: null }); return; }
+    if (g) { go({ t: g.dataset.tabGo, doc: idxDoc, adv: advPage, key: null }); return; }
     const d = e.target.closest("[data-doc]");
-    if (d) { go({ t: "index", doc: +d.dataset.doc, key: null }); return; }
+    if (d) { go({ t: "index", doc: +d.dataset.doc, adv: advPage, key: null }); return; }
     if (e.target.closest("#idxback")) {
       /* 빵부스러기는 늘 법령 목록으로 간다. 들어온 길을 그대로 되짚을 수 있을 때만 뒤로가기를
          쓰고(히스토리가 안 늘어난다), 아니면 목록으로 새로 이동한다. */
       const st = history.state, prev = st && views[st.i - 1];
       if (prev && prev.t === "index" && prev.doc === null && !prev.key) history.back();
-      else go({ t: "index", doc: null, key: null });
+      else go({ t: "index", doc: null, adv: advPage, key: null });
+      return;
+    }
+    const ag = e.target.closest("[data-adv-go]");
+    if (ag) { go({ t: "adv", doc: idxDoc, adv: ag.dataset.advGo, key: null }); return; }
+    if (e.target.closest("#advback")) {
+      /* 목차의 빵부스러기와 같게 — 되짚을 수 있으면 뒤로가기, 아니면 첫 화면으로 새로 간다 */
+      const st2 = history.state, p2 = st2 && views[st2.i - 1];
+      if (p2 && p2.t === "adv" && !p2.adv && !p2.key) history.back();
+      else go({ t: "adv", doc: idxDoc, adv: null, key: null });
+      return;
+    }
+    if (e.target.closest("#savefold")) {
+      savedOpen = !savedOpen;
+      store.set("savedOpen", savedOpen);
+      renderSearch();
       return;
     }
     if (e.target.closest("#more")) { shown += 100; renderSearch(); return; }
