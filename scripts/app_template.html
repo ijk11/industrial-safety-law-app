@@ -952,7 +952,7 @@ const CHANGES = [
   ["2026-08-31", ["중대재해처벌법 계열·근로감독관 집무규정 추가 (32건)",
                   "빌드 환경에 따라 판이 갈리던 문제 해결"]],
   ["2026-08-30", ["별표 괘선표를 표로 변환",
-                  "법령 업데이트 직접 확인",
+                  "앱 업데이트 직접 확인",
                   "조문별 시행일 표시",
                   "뒤로가기 전면 적용",
                   "최초 공개"]]
@@ -989,7 +989,7 @@ function mountVersion() {
   if (mount && "serviceWorker" in navigator && location.protocol !== "file:") {
     const btn = document.createElement("button");
     btn.className = "verbtn";
-    btn.textContent = "법령 업데이트 확인";
+    btn.textContent = "앱 업데이트 확인";
     btn.onclick = () => checkUpdate(btn);
     mount.appendChild(btn);
   }
@@ -1031,13 +1031,13 @@ async function checkUpdate(btn) {
     new Promise(r => setTimeout(() => r(null), 10000))
   ]);
   if (!reg) {
-    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    btn.disabled = false; btn.textContent = "앱 업데이트 확인";
     toast("아직 설치가 끝나지 않았습니다. 앱을 닫았다 연 뒤에 다시 눌러 주세요.", 6000); return;
   }
   try {
     await reg.update();
   } catch (e) {
-    btn.disabled = false; btn.textContent = "법령 업데이트 확인";
+    btn.disabled = false; btn.textContent = "앱 업데이트 확인";
     toast("확인하지 못했습니다. 잠시 뒤 다시 눌러 주세요."); return;
   }
   await swSettled(reg.installing || reg.waiting, 20000);
@@ -1053,7 +1053,7 @@ async function checkUpdate(btn) {
     };
     toast("새 법령 판을 받았습니다. 버튼을 한 번 더 누르면 바로 바뀝니다.", 7000);
   } else {
-    btn.textContent = "법령 업데이트 확인";
+    btn.textContent = "앱 업데이트 확인";
     toast("최신입니다. 새로 올라온 판이 없습니다.");
   }
 }
