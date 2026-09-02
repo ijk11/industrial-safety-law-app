@@ -118,6 +118,25 @@ python scripts/build_pwa.py      # 앱 굽기               → web/
 python scripts/verify.py --shots   # 크롬을 화면 없이 띄워 눌러 보고 화면도 찍는다
 ```
 
+## 얼마나 쓰이는지
+
+앱에는 추적 코드가 없다. 대신 **단일 파일을 Release 로 내면 GitHub 이 내려받은 횟수를
+세어 준다** — 앱은 아무것도 바깥으로 보내지 않은 채로 대략의 보급 규모를 알 수 있다.
+PWA 설치 수가 아니라 파일을 내려받은 횟수다.
+
+```bash
+git tag v2026.09.02 && git push origin v2026.09.02   # 태그를 밀면 저절로 난다
+```
+
+Actions 탭에서 「단일 파일 Release 내기 → Run workflow」로 내도 된다.
+[`.github/workflows/release.yml`](.github/workflows/release.yml)이 파일을 굽고 붙인다.
+
+내려받은 횟수는 인증 없이 읽는다.
+
+```bash
+curl -s https://api.github.com/repos/ijk11/industrial-safety-law-app/releases | grep download_count
+```
+
 ## 올리기
 
 GitHub Pages에 자동으로 올라간다. 저장소에서 한 번만 켜 주면 된다.

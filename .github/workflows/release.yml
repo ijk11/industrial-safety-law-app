@@ -1,0 +1,107 @@
+# 단일 파일(dist/산안법-조문찾기.html)을 Release 에 붙인다.
+#
+# 왜 Release 인가 — GitHub 이 **자산마다 내려받은 횟수를 세어 준다.** 앱에 추적
+# 코드를 한 줄도 넣지 않고, 저장소가 공개이므로 인증 없이 그 수를 읽을 수 있다.
+# PWA 설치 수는 아니고 "단일 파일을 내려받은 횟수"다.
+#
+# 내는 법 — 둘 중 하나
+#   1) Actions 탭 → 이 워크플로 → Run workflow → 판 이름을 적는다 (예: 2026.09.02)
+#   2) 로컬에서 태그를 밀면 저절로 난다:  git tag v2026.09.02 && git push origin v2026.09.02
+#
+# 내려받은 횟수 보기 (인증 필요 없음):
+#   curl -s https://api.github.com/repos/ijk11/industrial-safety-law-app/releases
+name: 단일 파일 Release 내기
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "판 이름 (예: 2026.09.02). 비우면 오늘 날짜"
+        required: false
+
+# 자산을 올리려면 쓰기 권한이 있어야 한다.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # build_app.py 는 표준 라이브러리만 쓴다 (Pillow 가 필요한 쪽은 build_pwa 다).
+      - name: 단일 파일 굽기
+        run: python scripts/build_app.py
+
+      - name: 판 이름 정하기
+        id: v
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            tag="v${{ github.event.inputs.version }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+          else
+            tag="v$(date -u +%Y.%m.%d)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "판 이름: $tag"
+
+      # 담긴 법령이 몇 건이고 언제 기준인지를 Release 설명에 적어 둔다.
+      # 내려받는 사람이 그 파일이 언제 것인지 열어 보지 않고도 알 수 있어야 한다.
+      # 설명은 파일로 넘긴다 — 셸 인용에 태우면 따옴표 하나에 깨진다.
+      - name: 설명 적기
+        run: |
+          python - <<'PY' > notes.md
+          import glob, io, json, os, re
+          docs = [json.load(io.open(p, encoding="utf-8"))
+                  for p in glob.glob("data/laws/*.json") + glob.glob("data/notices/*.json")]
+          newest = max((d.get("시행일") or "") for d in docs)
+          basis = ""
+          for d in docs:
+              m = re.search(r"수집일\s*(\d{4}-\d{2}-\d{2})", d.get("출처") or "")
+              if m:
+                  basis = max(basis, m.group(1))
+          size = os.path.getsize("dist/산안법-조문찾기.html") / 1e6
+          print("인터넷 없이 산업안전보건법·중대재해처벌법 조문을 찾는 앱입니다.")
+          print("아래 파일을 내려받아 **더블클릭**하면 바로 열립니다. 설치도 통신도 필요 없습니다.")
+          print()
+          print(f"- 담긴 법령 **{len(docs)}건** · 가장 늦은 시행일 {newest}")
+          print(f"- 원문 기준일 {basis}")
+          print(f"- 파일 크기 {size:.1f}MB (법령 원문까지 한 파일에 들어 있습니다)")
+          print()
+          print("휴대폰에 설치해 쓰시려면 아래 주소를 사파리·크롬으로 열고 「홈 화면에 추가」 하세요.")
+          print("<https://ijk11.github.io/industrial-safety-law-app/>")
+          print()
+          print("법적 효력은 원문에 있습니다. 개정 여부는 조문 아래 「원문 확인」으로 확인하세요.")
+          PY
+          cat notes.md
+
+      - name: Release 내기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.v.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "이미 있는 판이라 파일만 바꿔 답니다: $tag"
+            gh release upload "$tag" "dist/산안법-조문찾기.html" --clobber
+          else
+            gh release create "$tag" "dist/산안법-조문찾기.html"               --title "산안법 조문 찾기 $tag" --notes-file notes.md
+          fi
+
+      - name: 내려받은 횟수 적어 두기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "### 지금까지 내려받은 횟수"
+            echo '```'
+            gh api "repos/${{ github.repository }}/releases" \
+              --jq '.[] | "\(.tag_name)  \(.assets[]?.download_count // 0)회  \(.assets[]?.name // "-")"'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
