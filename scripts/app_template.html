@@ -848,12 +848,13 @@ function renderAdv() {
   const v = $("#v-adv");
   /* 첫 화면은 갈래만 보여 준다. 성격이 저마다 달라 한 화면에 쌓으면 서로를 가린다. */
   if (!advPage) {
-    /* '기타' 라는 이름표는 탭에 이미 있다. 그 자리엔 아직 설치 안 한 사람에게 쓸모
-       있는 말을 둔다. 홈 화면에서 열고 있으면 잔소리이므로 내보이지 않는다. */
-    v.innerHTML = (installed() ? "" :
-      '<p class="advnote">홈 화면에 추가해 두면 <b>인터넷 없이 열리고, 저장한 조문도 ' +
-      '지워지지 않습니다.</b> 아이폰은 사파리 <b>공유</b> → 「홈 화면에 추가」, ' +
-      '안드로이드는 크롬 <b>⋮</b> → 「앱 설치」.</p>') +
+    /* '기타' 라는 이름표는 탭에 이미 있어 되풀이할 것이 없다. 그 자리에 이 앱이
+       무엇인지 두 줄로 둔다. 검색창에 갈래가 바로 붙어 있으면 숨이 가쁘다.
+       설치 권유는 팝업이 맡는다. */
+    v.innerHTML =
+      '<p class="advnote">산업안전보건법·중대재해처벌법 등 <b>' + DOCS.length +
+      '개 법령</b>을 기기에 담아 인터넷 없이 찾습니다.<br>' +
+      '국가법령정보센터 원문 그대로이며, <b>법적 효력은 원문에 있습니다.</b></p>' +
       '<ul class="list">' +
       advMenu("pen", "벌칙 모아보기",
         "과태료 " + penList("과").length + "개 · 형벌 " + penList("벌").length + "개 조문을 장별로") +
@@ -1418,7 +1419,7 @@ function onQuery() {
    이미 홈 화면에서 열고 있으면 띄우지 않는다 — 그 사람에게는 잔소리다.
    한 번 물리면 다시 묻지 않는다. 안드로이드·PC 크롬은 앱이 설치 창을 직접 띄울 수
    있지만(beforeinstallprompt), 아이폰 사파리는 그런 길이 없어 방법만 일러 준다. */
-let instPrompt = null;
+let instPrompt = null, instDone = false;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); instPrompt = e; });
 
 function installed() {
@@ -1426,7 +1427,9 @@ function installed() {
 }
 
 function maybeInstall() {
-  if (installed() || store.get("instOff", false)) return;
+  /* 홈 화면에서 열고 있으면 묻지 않는다. 그 밖에는 열 때마다 묻는다 —
+     한 번 물리고 마는 것보다, 쓰다가 마음이 바뀌는 쪽이 잦다. */
+  if (installed() || instDone) return;
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const how = ios
@@ -1438,11 +1441,16 @@ function maybeInstall() {
   $("#instgo").hidden = !instPrompt;
   $("#install").hidden = false;
 
-  $("#instno").onclick = () => { store.set("instOff", true); $("#install").hidden = true; };
+  /* 물리면 이번에만 닫는다. 다음에 열면 다시 묻는다. */
+  $("#instno").onclick = () => { $("#install").hidden = true; };
   $("#instgo").onclick = async () => {
     $("#install").hidden = true;
-    store.set("instOff", true);
-    try { instPrompt.prompt(); await instPrompt.userChoice; } catch (e) {}
+    try {
+      instPrompt.prompt();
+      const r = await instPrompt.userChoice;
+      /* 정말 설치했다면 이 창에서도 더 묻지 않는다 */
+      if (r && r.outcome === "accepted") instDone = true;
+    } catch (e) {}
     instPrompt = null;
   };
 }

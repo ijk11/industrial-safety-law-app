@@ -24,7 +24,8 @@
   ok("기기에 맞는 방법 안내", /홈 화면에 추가|앱 설치/.test(txt($$("#insthow"))), txt($$("#insthow")).slice(0, 40));
   $$("#instno").click(); await wait(250);
   ok("나중에 누르면 닫힘", $$("#install").hidden);
-  ok("다시 묻지 않게 적어 둠", store.get("instOff", false) === true);
+  /* 물려도 다음에 열면 다시 묻는다 — 저장해 두고 영영 묻지 않으면 안 된다 */
+  ok("물려도 남겨 두지 않는다", localStorage.getItem("osh:instOff") === null);
   ok("이미 설치했으면 아예 안 물음", typeof installed === "function" && !installed());
   ok("법령 32건 적재", typeof DOCS !== "undefined" && DOCS.length === 32, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
   ok("색인 2641건 내외", typeof RECS !== "undefined" && RECS.length > 2500, typeof RECS !== "undefined" ? RECS.length : "-");
@@ -328,9 +329,10 @@
   // 기타 탭 — 갈래를 고른 뒤에 들어간다
   document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(500);
   ok("기타 탭 열림", !$$("#v-adv").hidden && document.querySelectorAll("nav.tabs button").length === 3);
-  ok("'기타' 글자 자리에 설치 안내",
-     !$$("#v-adv .sec") && /홈 화면에 추가/.test(txt($$("#v-adv .advnote"))),
+  ok("'기타' 글자 자리에 프로그램 소개",
+     !$$("#v-adv .sec") && /인터넷 없이 찾습니다/.test(txt($$("#v-adv .advnote"))),
      txt($$("#v-adv .advnote")).slice(0, 34));
+  ok("소개에 법적 효력을 밝힘", /법적 효력은 원문에 있습니다/.test(txt($$("#v-adv .advnote"))));
   ok("첫 화면은 갈래 셋만",
      document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
