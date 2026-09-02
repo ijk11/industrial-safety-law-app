@@ -82,16 +82,27 @@ jobs:
           PY
           cat notes.md
 
+      # GitHub 은 자산 이름에서 한글을 지워 버린다. "산안법-조문찾기.html" 을 그대로
+      # 올리면 "-.html" 이 되어 무슨 파일인지 알 수 없다. 영문 이름으로 바꿔 올린다.
+      - name: 올릴 이름으로 바꾸기
+        id: f
+        run: |
+          name="osh-law-finder-${{ steps.v.outputs.tag }}.html"
+          cp "dist/산안법-조문찾기.html" "$name"
+          echo "file=$name" >> "$GITHUB_OUTPUT"
+          ls -l "$name"
+
       - name: Release 내기
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.v.outputs.tag }}"
+          file="${{ steps.f.outputs.file }}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "이미 있는 판이라 파일만 바꿔 답니다: $tag"
-            gh release upload "$tag" "dist/산안법-조문찾기.html" --clobber
+            gh release upload "$tag" "$file" --clobber
           else
-            gh release create "$tag" "dist/산안법-조문찾기.html"               --title "산안법 조문 찾기 $tag" --notes-file notes.md
+            gh release create "$tag" "$file" --title "산안법 조문 찾기 $tag" --notes-file notes.md
           fi
 
       - name: 내려받은 횟수 적어 두기
