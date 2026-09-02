@@ -384,9 +384,37 @@ def split_table(text, corpus=None):
     return out if seen else None
 
 
+def attach_penalty(docs, corpus):
+    """제12장 벌칙·과태료를 산안법 조문에 붙인다. 조문을 읽다가 바로 눈에 들도록."""
+    import penalty as P
+    P.use_joiner(P.make_joiner(gap_for, corpus))
+    pen, dropped = P.build(docs)
+    law = next((d for d in docs if d.get("법령명") == P.LAW), None)
+    if not law:
+        return 0, dropped
+    n = 0
+    for a in law.get("조문", []):
+        v = pen.get(a["조번호"])
+        if not v:
+            continue
+        slot = {}
+        if v["항"]:
+            slot["항"] = {str(k): [{x: y for x, y in it.items() if x != "일"} for it in lst]
+                          for k, lst in sorted(v["항"].items())}
+        if v["끝"]:
+            slot["끝"] = [{x: y for x, y in it.items() if x != "일"} for it in v["끝"]]
+        if slot:
+            a["벌"] = slot
+            n += 1
+    return n, dropped
+
+
 def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표를 읽기 좋은 꼴로 바꾼다."""
     corpus = build_corpus(docs)
+    hit, dropped = attach_penalty(docs, corpus)
+    print("벌칙·과태료를 붙인 조문 %d개%s" % (
+        hit, (" (법에 없는 조 %d건은 건너뜀)" % len(dropped)) if dropped else ""))
     keep_doc = {"법령명", "약칭", "법령구분", "법령번호", "소관부처", "공포일", "시행일", "링크",
                 "수집일", "조문", "별표", "약호", "단계", "군", "계"}
     for d in docs:

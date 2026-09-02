@@ -224,6 +224,57 @@
     history.back(); await wait(400);
   }
 
+  // 형광펜 — 찾던 낱말은 조문을 열어도 남아 있어야 한다
+  await type("추락 방지");
+  cards()[0].click(); await wait(400);
+  const marks = document.querySelectorAll("#rbody mark");
+  ok("조문에 형광펜 남음", marks.length > 0, marks.length + "곳");
+  ok("형광펜이 찾던 낱말", [...marks].every(m => /추락|방지/.test(m.textContent)));
+  ok("인용 링크 안 깨짐", document.querySelectorAll("#rbody a.ref").length >= 0 && !!$$("#rbody .art"));
+  ok("형광펜 단추 보임", !$$("#rhl").hidden);
+  $$("#next").click(); await wait(450);
+  ok("조문을 옮겨도 형광펜 남음", document.querySelectorAll("#rbody mark").length > 0);
+  $$("#rhl").click(); await wait(250);
+  ok("단추를 누르면 형광펜 걷힘", document.querySelectorAll("#rbody mark").length === 0);
+  ok("걷은 뒤 단추도 사라짐", $$("#rhl").hidden);
+  $$("#next").click(); await wait(450);
+  ok("걷은 뒤엔 다시 칠하지 않음", document.querySelectorAll("#rbody mark").length === 0);
+  history.back(); await wait(400); history.back(); await wait(400); history.back(); await wait(450);
+  await type("38"); cards()[0].click(); await wait(400);
+  ok("번호로 찾아간 조문엔 형광펜 없음", document.querySelectorAll("#rbody mark").length === 0);
+  history.back(); await wait(400);
+
+  // 제12장 벌칙·과태료 — 조문 밑에 붙는다
+  await type("법 38"); cards()[0].click(); await wait(450);
+  const pens = [...document.querySelectorAll("#rbody .pen")];
+  ok("제38조에 벌칙 붙음", pens.length >= 2, pens.length + "개");
+  ok("사망 시 가중형도 함께", pens.some(e => /7년 이하의 징역/.test(txt(e))));
+  ok("벌칙이 항 밑에 붙음",
+     !!document.querySelector("#rbody .hang + .pen"), "제1항 다음 자리");
+  history.back(); await wait(400);
+
+  await type("법 15"); cards()[0].click(); await wait(450);
+  const fine = $$("#rbody .pen");
+  ok("제15조에 과태료 붙음", !!fine && /과태료/.test(txt(fine)));
+  const more = $$("#rbody [data-pen]");
+  ok("경우별 과태료는 접혀 있음", !!more && $$("#" + more.dataset.pen).hidden);
+  more.click(); await wait(250);
+  const li = document.querySelectorAll("#rbody .pen li");
+  ok("눌러서 펼침", li.length === 2, li.length + "가지");
+  ok("차수별 금액", /1차.*500만원.*2차.*500만원.*3차.*500만원/.test(txt(li[0])), txt(li[0]).slice(0, 60));
+  ok("경우마다 금액이 다름", /1차.*300만원.*2차.*400만원/.test(txt(li[1])), txt(li[1]).slice(0, 60));
+  history.back(); await wait(400);
+
+  await type("법 119"); cards()[0].click(); await wait(450);
+  ok("제119조 과태료 — 공사금액 기준 1차",
+     /공사금액의 100분의 5/.test(txt($$("#rbody .pen"))) && /200만원/.test(txt($$("#rbody .pen"))),
+     txt($$("#rbody .pen")).slice(0, 70));
+  history.back(); await wait(400);
+
+  await type("법 63"); cards()[0].click(); await wait(450);
+  ok("항이 없는 조는 맨 아래에", !!document.querySelector("#rbody .art > .pen"));
+  history.back(); await wait(400);
+
   // 글꼴
   try {
     await document.fonts.ready;

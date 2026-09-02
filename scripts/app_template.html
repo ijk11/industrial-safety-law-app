@@ -126,7 +126,7 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .verbtn:disabled{color:var(--ink-3)}
 .verbtn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .vernote{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
-.maker{margin:14px 2px 2px;font-size:11px;color:var(--ink-3);opacity:.7;text-align:center}
+.maker{margin:9px 2px 0;font-size:12px;line-height:1.65;color:var(--ink-3)}
 .hint{margin:30px 4px 30px;font-size:13px;line-height:2.1;color:var(--ink-3)}
 .hint b{color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:7px}
@@ -186,6 +186,21 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .hang .hn{font-weight:700;color:var(--accent);margin-right:3px}
 .ho{margin:7px 0 0 14px;padding-left:2px;color:var(--ink-2);font-size:15px;line-height:1.72;white-space:pre-line}
 .del{color:var(--ink-3)}
+/* 제12장 벌칙·과태료 — 조문을 읽다 바로 눈에 들되, 본문과 섞이지는 않아야 한다 */
+.pen{margin:10px 0 14px;padding:9px 12px;border-radius:9px;background:var(--surface-2);
+  font-size:13.5px;line-height:1.7;color:var(--ink-2)}
+.pen + .pen{margin-top:-8px}
+.pen .tag{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:5px;
+  font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--accent-ink);background:var(--t3)}
+.pen .tag.fine{background:var(--t5)}
+.pen .lim{color:var(--ink-3)}
+.pen .cha{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.pen .src{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-3)}
+.pen .open{margin-top:5px;font-size:12.5px;font-weight:600;color:var(--accent)}
+.pen ul{margin:7px 0 0;padding:0;list-style:none}
+.pen li{margin:0 0 7px;padding-left:10px;border-left:2px solid var(--line-2)}
+.pen li:last-child{margin-bottom:0}
+.pen li .w{display:block;color:var(--ink-2)}
 a.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer}
 .tblwrap{overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px}
 /* 표가 아닌 별표 — 괘선을 걷어냈으므로 본문처럼 접히게 둔다 */
@@ -282,6 +297,9 @@ nav.tabs svg{width:20px;height:20px}
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
     <div class="who"><div class="a" id="rwho"></div><div class="b" id="rno"></div></div>
+    <button class="iconbtn" id="rhl" aria-label="형광펜 없애기" title="형광펜 없애기" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h6"/><path d="M14.5 3.5l6 6-8 8H8l-1.5-4z"/></svg>
+    </button>
     <button class="iconbtn" id="rstar" aria-label="저장">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3.8h12v16.4l-6-4.2-6 4.2z"/></svg>
     </button>
@@ -305,6 +323,7 @@ let DOCS = [], RECS = [], BYKEY = new Map();
 let saved = store.get("saved", []), recent = store.get("recent", []);
 let filter = "전체", shown = 60, hits = [], tab = "search";
 let idxDoc = null, views = [];
+let hlToks = [];   /* 조문 안에 남겨 둘 형광펜 낱말 */
 let BASIS = "", NEWEST = "";
 
 /* ---------------- 데이터 펼치기 ---------------- */
@@ -424,6 +443,8 @@ function search(qRaw) {
   }
 
   const toks = q.toLowerCase().split(/\s+/).filter(Boolean);
+  /* 번호로 바로 찾아간 때는 조문을 눈으로 좇을 일이 없어 형광펜이 방해만 된다 */
+  hlToks = (mArt || mTbl) ? [] : toks;
   if (/[a-z]/.test(q.toLowerCase())) prepDeep();
 
   const out = [];
@@ -462,6 +483,64 @@ function hl(text, toks) {
   return h.replace(//g, "<mark>").replace(//g, "</mark>");
 }
 
+/* ---------------- 조문 속 형광펜 ----------------
+   찾던 낱말은 조문을 열어도 그대로 남아 있어야 한다. 다시 눈으로 훑을 일이 없어진다.
+   본문 글을 다시 만들지 않고 텍스트 마디만 <mark> 로 감싼다 — 그래야 linkify 가
+   심어 둔 인용 링크가 상하지 않는다. 머리의 형광펜 단추를 누르면 걷어내고,
+   걷어낼 것이 없으면 단추도 내보이지 않는다. */
+const HLSKIP = "mark, .rfoot, .note, .rtitle, .rchap, .rwhen, .zoom";
+
+function paintHL() {
+  const box = $("#rbody"), btn = $("#rhl");
+  if (btn) btn.hidden = true;
+  if (!box || !hlToks.length) return;
+  const pat = hlToks.filter(Boolean)
+    .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  if (!pat) return;
+  const re = new RegExp(pat, "gi");
+
+  const walk = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => n.nodeValue.trim() && !n.parentNode.closest(HLSKIP)
+      ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+  const targets = [];
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    re.lastIndex = 0;
+    if (re.test(n.nodeValue)) targets.push(n);
+  }
+
+  let hit = 0;
+  for (const n of targets) {
+    const src = n.nodeValue, frag = document.createDocumentFragment();
+    let last = 0;
+    re.lastIndex = 0;
+    for (let m; (m = re.exec(src)); ) {
+      if (!m[0]) { re.lastIndex++; continue; }
+      if (m.index > last) frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+      const el = document.createElement("mark");
+      el.textContent = m[0];
+      frag.appendChild(el);
+      last = m.index + m[0].length;
+      hit++;
+    }
+    if (last < src.length) frag.appendChild(document.createTextNode(src.slice(last)));
+    n.parentNode.replaceChild(frag, n);
+  }
+  if (btn) btn.hidden = !hit;
+}
+
+/* 형광펜을 걷어낸다. 조문을 옮겨 다녀도 다시 칠해지지 않도록 낱말까지 버린다. */
+function clearHL() {
+  hlToks = [];
+  const box = $("#rbody");
+  if (box) box.querySelectorAll("mark").forEach(m => {
+    const p = m.parentNode;
+    p.replaceChild(document.createTextNode(m.textContent), m);
+    p.normalize();
+  });
+  if ($("#rhl")) $("#rhl").hidden = true;
+}
+
 /* ---------------- 검색 화면 ---------------- */
 const QUICK = [
   ["산업안전보건법", "제38조", "안전조치"],
@@ -477,6 +556,7 @@ const QUICK = [
 function renderSearch() {
   const v = $("#v-search"), q = $("#q").value.trim();
   if (!q) {
+    hlToks = [];   /* 검색을 비웠으면 형광펜도 없다 */
     /* 첫 화면은 비워 둔다 — 찾는 법 한 줄, 바로가기 여섯, 최근 셋. 법령 목록은 목차 탭 몫이다. */
   
     let h = '<div class="sec">자주 찾는 조문</div><div class="quick">' + QUICK.map(q3 => {
@@ -784,13 +864,17 @@ function showRec(key) {
     const a = d.조문[r.i];
     h += '<div class="art">';
     if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + linkify(esc(a.본문), r.d) + "</p>";
-    (a.항 || []).forEach(hg => {
+    (a.항 || []).forEach((hg, n) => {
       h += '<div class="hang">';
       if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + linkify(esc(hg.내용), r.d) + "</p>";
       else if (hg.번호) h += '<p><span class="hn">' + esc(hg.번호) + "</span></p>";
       (hg.호 || []).forEach(x => { h += '<div class="ho">' + linkify(esc(x), r.d) + "</div>"; });
       h += "</div>";
+      /* 그 항을 어겼을 때 따라오는 것 — 다음 항으로 넘어가기 전에 붙인다 */
+      h += penHTML(((a.벌 || {}).항 || {})[n + 1], d);
     });
+    /* 조 전체에 걸리는 것은 어느 항의 몫으로 읽히면 안 되므로 맨 아래에 둔다 */
+    h += penHTML((a.벌 || {}).끝, d);
     if (a.참고) h += '<div class="moved">' + linkify(esc(a.참고), r.d) + "</div>";
     if (!a.본문 && !(a.항 || []).length && !a.참고) h += '<p class="del">본문이 없는 조문입니다.</p>';
     h += "</div>";
@@ -805,6 +889,7 @@ function showRec(key) {
   h += '<div class="note">' + esc(d.법령구분 || "") + " · " + esc(d.법령번호 || "") + " · " + esc(d.소관부처 || "") + "<br>국가법령정보센터 원문을 그대로 담았습니다. 법적 효력은 원문에 있으며, 개정 여부는 “원문 확인”으로 확인하세요.</div>";
   h += "</div>";
   $("#rbody").innerHTML = h;
+  paintHL();
   $("#rbody").scrollTop = 0;
   $("#reader").hidden = false;
   document.body.style.overflow = "hidden";
@@ -813,12 +898,66 @@ function showRec(key) {
   store.set("recent", recent);
   $("#prev") && ($("#prev").onclick = () => openRec(sib[at - 1].key, "sib"));
   $("#next") && ($("#next").onclick = () => openRec(sib[at + 1].key, "sib"));
+  $("#rbody").querySelectorAll("[data-pen]").forEach(b => b.onclick = () => {
+    const ul = $("#" + b.dataset.pen);
+    ul.hidden = !ul.hidden;
+    b.textContent = ul.hidden ? "경우별로 보기 ▸" : "접기 ▾";
+  });
   $("#rbody").querySelectorAll("[data-z]").forEach(b => b.onclick = () => {
     const cs = parseFloat(getComputedStyle($("#rbody").querySelector(".tbl")).fontSize);
     const nv = Math.max(8, Math.min(22, cs + (+b.dataset.z)));
     document.documentElement.style.setProperty("--tblsize", nv + "px");
     store.set("tblsize", nv);
   });
+}
+
+
+/* ---------------- 제12장 벌칙·과태료 ----------------
+   조문을 어겼을 때 무엇이 따라오는지는 조문 옆에 있어야 쓸모가 있다. 제12장을
+   찾아가 다시 읽는 일을 없앤다. 과태료는 1·2·3차로 갈리고, 경우에 따라 또 갈리는
+   것이 있어(제15조·제42조 등) 그런 것은 한 줄로 접어 두고 눌러서 펼친다. */
+function penHTML(list, d) {
+  if (!list || !list.length) return "";
+  return list.map(it => {
+    if (it.t === "벌") {
+      return '<div class="pen"><span class="tag">벌칙</span>' + esc(it.형) +
+        (it.한정 ? ' <span class="lim">(' + esc(it.한정) + "에 한정)</span>" : "") +
+        (it.때 ? ' <span class="lim">— ' + esc(it.때) + " 경우</span>" : "") +
+        '<span class="src">' + esc(it.근거) + "</span></div>";
+    }
+    const head = '<div class="pen"><span class="tag fine">과태료</span>';
+    if (it.돈) {
+      return head + chaHTML(it.돈) + '<span class="src">' + esc(it.근거) + "</span></div>";
+    }
+    const id = "pen" + (penSeq++);
+    return head + esc(penSum(it.때들)) +
+      '<button class="open" data-pen="' + id + '">경우별로 보기 ▸</button>' +
+      '<ul id="' + id + '" hidden>' + it.때들.map(c =>
+        '<li><span class="w">' + esc(c.때) + "</span>" + chaHTML(c.돈) + "</li>").join("") +
+      '</ul><span class="src">' + esc(it.근거) + "</span></div>";
+  }).join("");
+}
+let penSeq = 0;
+
+function chaHTML(m) {
+  return ["1차", "2차", "3차"].map((n, i) =>
+    "(" + n + ') <span class="cha">' + esc(m[i] || "-") + "</span>").join(" / ");
+}
+
+/* 접어 둘 때 보여 줄 한 줄 — 경우마다 금액이 다르니 폭으로 알린다 */
+function penSum(cases) {
+  const nums = [];
+  let prose = false;
+  for (const c of cases) for (const v of c.돈) {
+    const m = /^([\d,]+)만원$/.exec(v || "");
+    if (m) nums.push(+m[1].replace(/,/g, ""));
+    else if (v) prose = true;   /* 공사금액의 100분의 5 처럼 글로 된 금액 */
+  }
+  /* 글로 된 금액이 섞이면 폭으로 알릴 수 없다. 없는 셈 치고 범위를 내면 거짓이 된다 */
+  if (prose || !nums.length) return "경우에 따라 다릅니다";
+  const lo = Math.min(...nums), hi = Math.max(...nums);
+  const f = n => n.toLocaleString() + "만원";
+  return "경우에 따라 " + (lo === hi ? f(lo) : f(lo) + "~" + f(hi));
 }
 
 function hideReader() {
@@ -940,6 +1079,7 @@ function start() {
     if (e.target.closest("#more")) { shown += 100; renderSearch(); return; }
   });
   $("#rback").onclick = () => history.back();
+  $("#rhl").onclick = clearHL;
   $("#rstar").onclick = () => {
     if (!cur) return;
     saved = saved.includes(cur.key) ? saved.filter(k => k !== cur.key) : [cur.key].concat(saved);
