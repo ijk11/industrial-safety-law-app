@@ -643,6 +643,31 @@
     $$("#updno").click(); await wait(250);
   }
 
+  // 조문 공유 — 링크 없이 글만, 벌칙·과태료는 고르게
+  await type("법 42"); cards()[0].click(); await wait(500);
+  ok("조문 화면에 공유 단추", !!$$("#rshare"));
+  $$("#rshare").click(); await wait(400);
+  ok("공유창 열림", !$$("#share").hidden);
+  const prev = () => txt($$("#shprev"));
+  ok("법령명과 조번호로 시작", /^산업안전보건법 제42조/.test($$("#shprev").textContent), prev().slice(0, 30));
+  ok("시행일을 밝힘", /시행 \d{4}-\d{2}-\d{2}/.test(prev()));
+  /* 링크는 넣지 않기로 했다 — 주소가 섞이면 카카오톡에서 미리보기가 끼어든다 */
+  ok("링크를 넣지 않는다", !/https?:\/\//.test($$("#shprev").textContent), prev().slice(-40));
+  ok("벌칙·과태료를 고를 수 있음", !$$("#shpenrow").hidden);
+  $$("#shpen").checked = true; $$("#shpen").dispatchEvent(new Event("change")); await wait(300);
+  const withPen = $$("#shprev").textContent;
+  ok("켜면 과태료가 들어감", /\[과태료\]|\[형벌\]/.test(withPen));
+  $$("#shpen").checked = false; $$("#shpen").dispatchEvent(new Event("change")); await wait(300);
+  const noPen = $$("#shprev").textContent;
+  ok("끄면 빠짐", !/\[과태료\]|\[형벌\]/.test(noPen) && noPen.length < withPen.length,
+     withPen.length + "자 → " + noPen.length + "자");
+  $$("#shno").click(); await wait(250);
+  $$("#rshare").click(); await wait(400);
+  ok("고른 것을 기억함", $$("#shpen").checked === false);
+  $$("#shno").click(); await wait(250);
+  ok("취소하면 닫힘", $$("#share").hidden);
+  history.back(); await wait(400);
+
   // 글꼴
   try {
     await document.fonts.ready;
