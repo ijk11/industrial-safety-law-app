@@ -57,6 +57,8 @@ section{margin:0 0 22px}
 .row .b{flex:1;min-width:0;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden}
 .row .b i{display:block;height:100%;border-radius:5px;background:var(--accent)}
 .row.today .d{color:var(--accent);font-weight:700}
+.row .name .tag{margin-left:7px;padding:1px 6px;border-radius:5px;background:var(--accent);
+  color:var(--accent-ink);font-family:inherit;font-size:10.5px;font-weight:700;vertical-align:1px}
 .row .name{flex:1;min-width:0;font-size:12.5px;color:var(--ink-2);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace}
 
@@ -88,6 +90,10 @@ var KEY = "AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M";
 var URL_ = "https://firestore.googleapis.com/v1/projects/" + PROJECT +
   "/databases/(default)/documents/stats?key=" + KEY + "&pageSize=300";
 
+/* 계수기를 붙이던 날이라 내가 돌린 검사와 CI 가 통째로 섞였다. 규칙이 삭제를 막아
+   두어 지울 수 없으므로 여기서 빼고 본다. 남겨 두면 눈이 매번 그 막대에 끌린다. */
+var DIRTY = ["2026-09-04"];
+
 var $ = function (s) { return document.querySelector(s); };
 var esc = function (s) {
   return String(s).replace(/[&<>"]/g, function (c) {
@@ -105,14 +111,25 @@ function card(n, k, lead) {
     n.toLocaleString() + '</div><div class="k">' + k + "</div></div>";
 }
 
-function draw(docs) {
+/* 어느 것이 지금 판인지는 같은 자리에 놓인 sw.js 가 안다. 손으로 적어 두면 틀린다 */
+function nowVer() {
+  return fetch("sw.js", { cache: "no-store" })
+    .then(function (r) { return r.text(); })
+    .then(function (t) { return (t.match(/osh-[0-9a-f]+/) || [])[0] || ""; })
+    .catch(function () { return ""; });
+}
+
+function draw(docs, now) {
   var daily = {}, vers = {}, one = { devices: 0, install: 0 };
   docs.forEach(function (d) {
     var name = d.name.split("/").pop();
     var n = parseInt((((d.fields || {}).n || {}).integerValue) || 0, 10);
     if (one.hasOwnProperty(name)) one[name] = n;
-    else if (name.indexOf("daily-") === 0) daily[name.slice(6)] = n;
-    else if (name.indexOf("ver-") === 0) vers[name.slice(4)] = n;
+    else if (name.indexOf("daily-") === 0) {
+      if (DIRTY.indexOf(name.slice(6)) < 0) daily[name.slice(6)] = n;
+    } else if (name.indexOf("ver-") === 0) {
+      vers[name.slice(4)] = { n: n, at: d.createTime || "" };
+    }
   });
 
   var today = todayKST();
@@ -144,21 +161,27 @@ function draw(docs) {
   }
   h += "</section>";
 
-  var vk = Object.keys(vers).sort(function (a, b) { return vers[b] - vers[a]; });
+  /* 처음 잡힌 때 순으로 놓는다. 이름이 사람이 읽을 수 있는 것이 아니라 차례가 없으면
+     어느 것이 새 판인지 알 길이 없다. */
+  var vk = Object.keys(vers).sort(function (a, b) {
+    return vers[a].at < vers[b].at ? 1 : vers[a].at > vers[b].at ? -1 : 0;
+  });
   if (vk.length) {
     h += "<section><h2>판마다 갈아탄 기기</h2><div class=\"rows\">" +
       vk.map(function (k) {
-        return '<div class="row"><div class="name">' + esc(k) + "</div>" +
-          '<div class="v">' + vers[k] + "</div></div>";
+        return '<div class="row"><div class="name">' + esc(k) +
+          (k === now ? '<b class="tag">지금 판</b>' : "") + "</div>" +
+          '<div class="v">' + vers[k].n + "</div></div>";
       }).join("") + "</div>" +
-      '<div class="sum">새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다.</div></section>';
+      '<div class="sum">새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다. ' +
+      '새로 낸 판 아래 숫자가 차오르면 그만큼 갈아탄 것이다.</div></section>';
   }
 
   h += '<div class="note"><b>이 숫자의 한계</b><ul>' +
     "<li>기기 안 저장에 기대므로, 브라우저 자료를 지우거나 다른 브라우저로 열면 새 기기로 센다</li>" +
     "<li>사생활 보호 모드는 아예 세지 않는다 — 실제 이용자는 이보다 조금 더 많다</li>" +
     "<li>만들면서 여는 것(localhost)과 CI 는 세지 않는다</li>" +
-    "<li>2026-09-04 치는 만들며 돌린 검사가 섞여 믿을 수 없다</li>" +
+    "<li>계수기를 붙인 2026-09-04 치는 검사가 섞여 믿을 수 없어 아예 빼 두었다</li>" +
     "</ul>보내는 것은 숫자를 올려 달라는 말 한 마디뿐이다. 누가·어디서·무엇을 봤는지는 " +
     "보내지 않고, 기기를 가리는 번호조차 서버로 가지 않는다.</div>";
 
@@ -167,10 +190,9 @@ function draw(docs) {
 
 function load() {
   $("#again").disabled = true;
-  fetch(URL_, { cache: "no-store" })
-    .then(function (r) { return r.json(); })
-    .then(function (j) {
-      draw(j.documents || []);
+  Promise.all([fetch(URL_, { cache: "no-store" }).then(function (r) { return r.json(); }), nowVer()])
+    .then(function (a) {
+      draw(a[0].documents || [], a[1]);
       var t = new Date();
       $("#when").textContent = "읽은 때 " +
         String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0");
