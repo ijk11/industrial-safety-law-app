@@ -160,13 +160,23 @@
   if (guideChip) guideChip.click();
   await wait(400);
   ok("지침 필터는 지침만 검색", hits.length > 0 && hits.every(r => DOCS[r.d].군 === "지침"), hits.length + "건");
+  ok("지침 검색 결과는 원문 종류인 고시 배지", cards().length > 0 &&
+     cards().every(c => txt(c.querySelector(".badge")) === "고시"));
   $$('.chip[data-g="전체"]').click(); await wait(300);
 
   // 목차
   document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(300);
   ok("목차: 법령 목록 66건", document.querySelectorAll("#v-index .row").length === 66, document.querySelectorAll("#v-index .row").length + "건");
-  ok("목차: 지침 배지 17개", document.querySelectorAll("#v-index .badge.l6").length === 17 &&
-     [...document.querySelectorAll("#v-index .badge.l6")].every(b => txt(b) === "지침"));
+  ok("목차: 단계 6 지침 17건은 고시 배지", document.querySelectorAll("#v-index .badge.l6").length === 17 &&
+     [...document.querySelectorAll("#v-index .badge.l6")].every(b => txt(b) === "고시"));
+  ok("목차: 행정규칙 배지는 원문의 고시·훈령·예규",
+     DOCS.every((d, i) => !["고시", "훈령", "예규"].includes(d.법령구분) ||
+       txt($$('#v-index [data-doc="' + i + '"] .badge')) === d.법령구분));
+  {
+    const employment = DOCS.findIndex(d => d.군 === "취업제한규칙");
+    ok("목차: 취업제한규칙은 부령 배지", employment >= 0 &&
+       txt($$('#v-index [data-doc="' + employment + '"] .badge')) === "부령");
+  }
   {
     const names = [...document.querySelectorAll("#v-index .row .t")].map(e => txt(e));
     const certified = names.indexOf("위험기계·기구 안전인증 고시");
