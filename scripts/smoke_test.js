@@ -552,41 +552,13 @@
      !$$("#v-adv .sec") && /인터넷 없이 찾습니다/.test(txt($$("#v-adv .advnote"))),
      txt($$("#v-adv .advnote")).slice(0, 34));
   ok("소개에 법적 효력을 밝힘", /법적 효력은 원문에 있습니다/.test(txt($$("#v-adv .advnote"))));
-  ok("첫 화면은 기초 법지식을 맨 위에 둔 네 갈래",
-     document.querySelectorAll("#v-adv .row").length === 4 &&
-     $$("#v-adv .row").dataset.advGo === "basics" && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
+  ok("첫 화면은 벌칙 모아보기를 맨 위에 둔 세 갈래",
+     document.querySelectorAll("#v-adv .row").length === 3 &&
+     $$("#v-adv .row").dataset.advGo === "pen" && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
-
-  $$('#v-adv [data-adv-go="basics"]').click(); await wait(400);
-  ok("기초 법지식으로 들어감", /기초 법지식/.test(txt($$("#v-adv .crumb"))) && !!$$("#v-adv .basics"));
-  const terms = [...document.querySelectorAll("#v-adv .basics .tn")].map(e => txt(e));
-  ok("법령·행정규칙과 조치의 개념 설명",
-     ["법령", "법(법률)", "시행령(대통령령)", "시행규칙(부령)", "행정규칙", "고시", "훈령", "예규",
-      "지침", "과태료", "사법조치", "형벌(징역·벌금)"].every(t => terms.includes(t)), terms.join(" / "));
-  const basicText = txt($$("#v-adv .basics"));
-  ok("과태료와 사법조치의 차이를 설명", /행정질서벌/.test(basicText) && /전과가 남지/.test(basicText) &&
-     /입건·수사·검찰 송치/.test(basicText) && /유죄 확정을 뜻하지/.test(basicText));
-  /* 열두 항목을 다 펼쳐 두면 화면 서너 개가 된다. 접어 두고 눌러야 나온다 */
-  const bodies = [...document.querySelectorAll("#v-adv .basics .tb")];
-  ok("자세한 설명은 접혀 있음", bodies.length === 12 && bodies.every(e => e.hidden), bodies.length + "개");
-  const ones = [...document.querySelectorAll("#v-adv .basics .ts")].map(e => txt(e));
-  ok("접은 채로도 한 줄 요약은 보임", ones.length === 12 &&
-     ones.some(t => /전과가 남지 않는다/.test(t)) && ones.some(t => /국회가 의결해 만든다/.test(t)),
-     ones.slice(0, 3).join(" / "));
-  const feeTerm = [...document.querySelectorAll("#v-adv .basics .term")].find(b => txt(b).indexOf("과태료") === 0);
-  feeTerm.click(); await wait(300);
-  ok("누르면 펼쳐짐", !feeTerm.nextElementSibling.hidden && feeTerm.classList.contains("open"));
-  feeTerm.click(); await wait(300);
-  ok("다시 누르면 접힘", feeTerm.nextElementSibling.hidden);
-  feeTerm.click(); await wait(300);
-  const basicRefs = [...document.querySelectorAll("#v-adv .basics .reflink[data-key]")];
-  ok("기초 법지식의 근거 조문 연결", basicRefs.length === 2 && !$$("#v-adv .basics .reflink.off"));
-  if (basicRefs.length) basicRefs[0].click(); await wait(400);
-  ok("기초 법지식에서 과태료 원문 열기", !$$("#reader").hidden && /제175조/.test(txt($$("#rno"))));
-  history.back(); await wait(450);
-  ok("뒤로가기: 원문에서 기초 법지식 복귀", $$("#reader").hidden && !!$$("#v-adv .basics"));
-  $$("#advback").click(); await wait(450);
-  ok("기초 법지식의 기타 버튼으로 메뉴 복귀", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#v-adv .basics"));
+  /* 기초 법지식은 걷어냈다. 자취가 남으면 눌러도 빈 화면이 뜬다 */
+  ok("기초 법지식은 남아 있지 않음",
+     !$$('#v-adv [data-adv-go="basics"]') && typeof basicsPage === "undefined");
 
   $$('#v-adv [data-adv-go="pen"]').click(); await wait(500);
   const grid = () => [...document.querySelectorAll("#v-adv .artgrid button")];
@@ -608,7 +580,7 @@
   history.back(); await wait(450);
   ok("뒤로가기: 모아보기로 복귀", !!$$("#v-adv .artgrid"));
   history.back(); await wait(500);
-  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#v-adv .crumb"));
+  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .crumb"));
 
   /* 상시근로자 기준표는 정리한 것이라, 근거가 실제 조문에 닿는지가 생명이다.
      법이 개정돼 조문 번호가 바뀌면 여기서 먼저 걸린다. */
@@ -649,7 +621,7 @@
   ok("근거를 눌러 조문으로", !$$("#reader").hidden, want + " → " + txt($$("#rwho")) + " " + txt($$("#rno")).slice(0, 16));
   history.back(); await wait(450);
   $$("#advback").click(); await wait(500);
-  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 4);
+  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 3);
   /* 연락처가 뒤에 붙을 수 있다. 이름이 밝혀져 있는지만 본다 */
   ok("기타 탭 아래에 만든 사람", /^제작: 김익중/.test(txt($$("#v-adv .by"))), txt($$("#v-adv .by")));
 
