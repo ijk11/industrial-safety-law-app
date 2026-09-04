@@ -1467,6 +1467,52 @@ function onQuery() {
   }, q.length <= 1 ? 220 : 110);
 }
 
+/* ---------------- 얼마나 쓰이는지 세기 ----------------
+   앱에 추적 도구를 넣지 않는다. 대신 Firestore 문서 하나의 숫자를 올린다.
+   보내는 것은 **숫자를 올려 달라는 말 한 마디뿐**이다 — 누가, 어디서, 무엇을
+   봤는지는 보내지 않는다. 기기를 가리는 번호조차 서버로 가지 않는다.
+
+     stats/daily-2026-09-02   그날 앱을 연 기기 수
+     stats/install            홈 화면 앱으로 처음 열린 횟수
+
+   같은 기기가 하루에 여러 번 열어도 한 번만 센다. 그 판정은 기기 안에서 한다.
+   저장이 막힌 기기(사생활 보호 모드)는 아예 세지 않는다 — 열 때마다 보내면
+   숫자가 부풀어 오히려 못 믿을 것이 된다.
+
+   FB 가 비어 있으면 아무 일도 하지 않는다. 설정 전에도 앱은 그대로 돈다. */
+const FB = { project: "industrial-safety-law-app",
+             key: "AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M" };
+
+function bump(doc) {
+  if (!FB.project || !FB.key || !navigator.onLine) return;
+  const path = "projects/" + FB.project + "/databases/(default)/documents/stats/" + doc;
+  fetch("https://firestore.googleapis.com/v1/projects/" + FB.project +
+        "/databases/(default)/documents:commit?key=" + FB.key, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ writes: [{
+      update: { name: path },
+      updateMask: { fieldPaths: [] },
+      updateTransforms: [{ fieldPath: "n", increment: { integerValue: "1" } }]
+    }] })
+  }).catch(() => {});   /* 못 보내도 그만이다. 앱이 하려던 일과 상관없다 */
+}
+
+function count() {
+  /* 저장이 되는 기기에서만 센다. 안 되면 조용히 넘어간다 */
+  store.set("_t", 1);
+  if (store.get("_t", null) === null) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (store.get("day", "") !== today) { store.set("day", today); bump("daily-" + today); }
+
+  /* 홈 화면 앱으로 처음 열렸을 때가 곧 설치를 마친 때다. 아이폰에도 통한다 —
+     사파리는 설치 사건을 알려 주지 않지만, 홈 화면에서 열렸는지는 알 수 있다. */
+  if (installed() && !store.get("inst", false)) { store.set("inst", true); bump("install"); }
+}
+
+
+
 /* ---------------- 홈 화면에 추가 권함 ----------------
    브라우저 탭으로 열면 사파리가 이레 뒤 저장한 것을 지운다. 홈 화면에 두면 그 앱만의
    자리를 갖게 되어 지워지지 않고, 오프라인도 더 든든하다. 그래서 권한다.
@@ -1608,6 +1654,7 @@ function start() {
   $("#boot").remove();
   $("#app").hidden = false;
   maybeInstall();
+  count();
 }
 
 let toastTimer = null;

@@ -419,6 +419,22 @@
   $$("#advback").click(); await wait(500);
   document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(300);
 
+  // 얼마나 쓰이는지 세기 — 보내는 것이 숫자 하나뿐인지가 핵심이다
+  ok("계수기 설정이 있다", typeof FB === "object" && !!FB.project && !!FB.key, FB.project || "(비었음)");
+  ok("오늘 보냈다고 적어 둠", /^"\d{4}-\d{2}-\d{2}"$/.test(localStorage.getItem("osh:day") || ""),
+     localStorage.getItem("osh:day"));
+  /* 같은 기기가 하루에 여러 번 열어도 한 번만 센다. 그 판정은 기기 안에서 한다 */
+  {
+    let sent = 0;
+    const real = window.fetch;
+    window.fetch = (...a) => { if (String(a[0]).indexOf("firestore") >= 0) sent++; return real(...a); };
+    count(); count(); count();
+    window.fetch = real;
+    ok("하루에 한 번만 보낸다", sent === 0, sent + "번");
+  }
+  ok("기기를 가리는 번호를 보내지 않는다",
+     !/deviceId|uuid|randomUUID/.test(count.toString() + bump.toString()));
+
   // 글꼴
   try {
     await document.fonts.ready;
