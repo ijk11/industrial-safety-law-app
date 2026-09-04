@@ -140,22 +140,43 @@ python scripts/verify.py --shots   # 크롬을 화면 없이 띄워 눌러 보�
 
 ## 얼마나 쓰이는지
 
-앱에는 추적 코드가 없다. 대신 **단일 파일을 Release 로 내면 GitHub 이 내려받은 횟수를
-세어 준다** — 앱은 아무것도 바깥으로 보내지 않은 채로 대략의 보급 규모를 알 수 있다.
-PWA 설치 수가 아니라 파일을 내려받은 횟수다.
+앱에는 추적 도구가 없다. 대신 **Firestore 문서 하나의 숫자를 올린다.** 보내는 것은
+숫자를 올려 달라는 말 한 마디뿐이다 — 누가·어디서·무엇을 봤는지는 보내지 않고,
+기기를 가리는 번호조차 서버로 가지 않는다.
+
+| 문서 | 세는 것 |
+|---|---|
+| `stats/devices` | 한 번이라도 연 기기 수 (기기마다 평생 한 번) |
+| `stats/install` | 홈 화면 앱으로 처음 열린 수 (설치를 마친 수) |
+| `stats/daily-2026-09-04` | 그날 앱을 연 기기 수 |
+| `stats/ver-osh-abc123` | 그 판으로 갈아탄 기기 수 |
+
+`devices` 는 하루라도 안 열었다고 빠지지 않는다 — 며칠이면 곧 「깔려 있는 기기 수」가 된다.
+`ver-` 는 새 판이 퍼지는 동안 이미 깔려 있던 기기를 한 대씩 세는 인구조사다.
+
+같은 기기가 하루에 여러 번 열어도 하루 한 번만 센다. 그 판정은 기기 안에서 한다.
+날짜는 한국 시각으로 끊는다. **보내는 데 성공했을 때만** 적어 두므로, 신호가 없는
+현장에서 연 날이 통째로 빠지지 않는다.
+**만들면서 여는 것(localhost)과 CI 는 세지 않는다** — 섞이면 숫자를 믿을 수 없다.
+사생활 보호 모드처럼 저장이 막힌 기기도 세지 않으므로, 실제 이용자는 조금 더 많다.
+
+보는 법.
 
 ```bash
-git tag v2026.09.02 && git push origin v2026.09.02   # 태그를 밀면 저절로 난다
+python scripts/usage.py
 ```
 
-Actions 탭에서 「단일 파일 Release 내기 → Run workflow」로 내도 된다.
-[`.github/workflows/release.yml`](.github/workflows/release.yml)이 파일을 굽고 붙인다.
-
-내려받은 횟수는 인증 없이 읽는다.
+날짜별 기기 수를 막대로, 합계·하루 평균·설치 수를 함께 낸다. `python scripts/usage.py 30`
+처럼 날수를 줄 수 있다. 인증이 필요 없어 어디서든 읽힌다.
 
 ```bash
-curl -s https://api.github.com/repos/ijk11/industrial-safety-law-app/releases | grep download_count
+curl -s "https://firestore.googleapis.com/v1/projects/industrial-safety-law-app/databases/(default)/documents/stats?key=AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M"
 ```
+
+Firebase 콘솔 → Firestore Database → `stats` 에서도 같은 숫자를 본다. 휴대폰으로도 된다.
+
+API 키가 공개인 것은 설계대로다. 보안 규칙이 `stats/{doc}` 의 `n` 을 **1씩 올리는 것만**
+허용하고, 그 밖의 쓰기와 다른 자리는 모두 막는다.
 
 ## 올리기
 

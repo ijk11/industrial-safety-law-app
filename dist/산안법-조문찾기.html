@@ -1639,9 +1639,9 @@ const FB = { project: "industrial-safety-law-app",
              key: "AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M" };
 
 function bump(doc) {
-  if (!FB.project || !FB.key || !navigator.onLine) return;
+  if (!FB.project || !FB.key || !navigator.onLine) return false;
   const path = "projects/" + FB.project + "/databases/(default)/documents/stats/" + doc;
-  fetch("https://firestore.googleapis.com/v1/projects/" + FB.project +
+  return fetch("https://firestore.googleapis.com/v1/projects/" + FB.project +
         "/databases/(default)/documents:commit?key=" + FB.key, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1650,20 +1650,44 @@ function bump(doc) {
       updateMask: { fieldPaths: [] },
       updateTransforms: [{ fieldPath: "n", increment: { integerValue: "1" } }]
     }] })
-  }).catch(() => {});   /* 못 보내도 그만이다. 앱이 하려던 일과 상관없다 */
+  }).then(r => r.ok).catch(() => false);   /* 못 보내도 그만이다. 앱이 하려던 일과 상관없다 */
 }
 
-function count() {
+/* 지금 돌고 있는 판. 새 판이 자리 잡으면 옛 캐시는 지워지므로 남는 것은 하나뿐이다 */
+async function running() {
+  try { return (await caches.keys()).find(k => k.indexOf("osh-") === 0) || ""; }
+  catch (e) { return ""; }
+}
+
+/* 만들면서 열어 보는 것과 CI 가 띄우는 브라우저는 사람이 아니다. 섞이면 숫자를
+   믿을 수 없게 된다 — 실제로 배포된 주소에서 연 것만 센다. */
+function isLocal() {
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+}
+
+async function count() {
   /* 저장이 되는 기기에서만 센다. 안 되면 조용히 넘어간다 */
   store.set("_t", 1);
   if (store.get("_t", null) === null) return;
 
-  const today = new Date().toISOString().slice(0, 10);
-  if (store.get("day", "") !== today) { store.set("day", today); bump("daily-" + today); }
+  /* 보내는 데 성공했을 때만 적어 둔다. 먼저 적어 버리면, 신호가 없는 현장에서 연 날은
+     영영 빠진다 — 이 앱을 가장 많이 쓰는 자리가 하필 그런 곳이다. */
+
+  /* 날짜는 한국 시각으로 끊는다. UTC 로 끊으면 아침 9시 전에 연 것이 전날로 간다 */
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (store.get("day", "") !== today && await bump("daily-" + today)) store.set("day", today);
+
+  /* 한 번이라도 연 기기는 평생 한 번만 센다. 며칠 지나면 이 숫자가 곧 "깔려 있는 기기 수"다.
+     날짜별은 그날 안 열면 빠지지만, 이것은 한 번 잡히면 남는다. */
+  if (!store.get("dev", false) && await bump("devices")) store.set("dev", true);
+
+  /* 판마다 갈아탄 기기 수. 새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다 */
+  const v = await running();
+  if (v && store.get("ver", "") !== v && await bump("ver-" + v)) store.set("ver", v);
 
   /* 홈 화면 앱으로 처음 열렸을 때가 곧 설치를 마친 때다. 아이폰에도 통한다 —
      사파리는 설치 사건을 알려 주지 않지만, 홈 화면에서 열렸는지는 알 수 있다. */
-  if (installed() && !store.get("inst", false)) { store.set("inst", true); bump("install"); }
+  if (installed() && !store.get("inst", false) && await bump("install")) store.set("inst", true);
 }
 
 
@@ -1676,7 +1700,13 @@ function count() {
    한 번 물리면 다시 묻지 않는다. 안드로이드·PC 크롬은 앱이 설치 창을 직접 띄울 수
    있지만(beforeinstallprompt), 아이폰 사파리는 그런 길이 없어 방법만 일러 준다. */
 let instPrompt = null, instDone = false;
-addEventListener("beforeinstallprompt", e => { e.preventDefault(); instPrompt = e; });
+addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  instPrompt = e;
+  /* 이 신호가 팝업보다 늦게 올 때가 있다. 그대로 두면 크롬인데도 "메뉴에서 고르세요"가
+     떠, 설치 단추를 눌러 끝낼 수 있는 사람을 메뉴 찾아 헤매게 만든다. */
+  if ($("#install") && !$("#install").hidden) maybeInstall();
+});
 
 function installed() {
   return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -1962,7 +1992,7 @@ function start() {
   $("#app").hidden = false;
   maybeInstall();
   watchUpdate();
-  count();
+  if (!isLocal()) count();
 }
 
 let toastTimer = null;

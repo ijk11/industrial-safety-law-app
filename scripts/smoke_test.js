@@ -22,6 +22,18 @@
      document.querySelectorAll("#install li").length === 2,
      [...document.querySelectorAll("#install li")].map(e => txt(e)).join(" / "));
   ok("기기에 맞는 방법 안내", /홈 화면에 추가|앱 설치/.test(txt($$("#insthow"))), txt($$("#insthow")).slice(0, 40));
+  /* 크롬은 "설치 창을 띄워도 좋다"는 신호를 팝업보다 늦게 줄 때가 있다. 그대로 두면
+     크롬인데도 메뉴를 찾아 가라고 이르게 된다 — 신호가 오면 그 자리에서 바꿔 준다. */
+  ok("먼저 뜰 때는 설치 단추가 없음", $$("#instgo").hidden);
+  {
+    const ev = new Event("beforeinstallprompt");
+    ev.prompt = () => {};
+    ev.userChoice = Promise.resolve({ outcome: "dismissed" });
+    dispatchEvent(ev); await wait(250);
+    ok("늦게 온 신호로 설치 단추가 생김", !$$("#instgo").hidden);
+    ok("안내도 설치 단추 쪽으로 바뀜", /설치를 누르면/.test(txt($$("#insthow"))), txt($$("#insthow")));
+    instPrompt = null;
+  }
   $$("#instno").click(); await wait(250);
   ok("나중에 누르면 닫힘", $$("#install").hidden);
   /* 물려도 다음에 열면 다시 묻는다 — 저장해 두고 영영 묻지 않으면 안 된다 */
@@ -648,16 +660,37 @@
 
   // 얼마나 쓰이는지 세기 — 보내는 것이 숫자 하나뿐인지가 핵심이다
   ok("계수기 설정이 있다", typeof FB === "object" && !!FB.project && !!FB.key, FB.project || "(비었음)");
-  ok("오늘 보냈다고 적어 둠", /^"\d{4}-\d{2}-\d{2}"$/.test(localStorage.getItem("osh:day") || ""),
-     localStorage.getItem("osh:day"));
+  /* 만들면서 열어 보는 것과 CI 는 사람이 아니다. 여기에 섞이면 숫자를 믿을 수 없다 */
+  ok("만들 때 여는 것은 세지 않는다", isLocal() && localStorage.getItem("osh:day") === null,
+     location.hostname + " · " + localStorage.getItem("osh:day"));
   /* 같은 기기가 하루에 여러 번 열어도 한 번만 센다. 그 판정은 기기 안에서 한다 */
   {
     let sent = 0;
     const real = window.fetch;
-    window.fetch = (...a) => { if (String(a[0]).indexOf("firestore") >= 0) sent++; return real(...a); };
-    count(); count(); count();
+    window.fetch = (...a) => {
+      /* 검사가 진짜 숫자를 올려 버리면 안 된다. 세기만 하고 보내지는 않는다 */
+      if (String(a[0]).indexOf("firestore") >= 0) { sent++; return Promise.resolve(new Response("{}")); }
+      return real(...a);
+    };
+    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
+    await count();
+    const first = sent;
+    await count(); await count();
+    ok("처음 열면 보낸다", first >= 2, first + "번");
+    ok("같은 날 다시 열어도 보내지 않는다", sent === first, sent + "번");
+    /* 날이 바뀌면 그날 칸만 하나 오른다. 기기 칸은 평생 한 번이라 다시 오르지 않는다 */
+    localStorage.removeItem("osh:day");
+    await count();
+    ok("날이 바뀌어도 기기 칸은 그대로", sent === first + 1, (sent - first) + "번");
     window.fetch = real;
-    ok("하루에 한 번만 보낸다", sent === 0, sent + "번");
+    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
+    /* 보내지 못한 날은 적어 두지 않는다 — 신호 없는 현장에서 연 날이 통째로 빠진다 */
+    window.fetch = () => Promise.reject(new Error("끊김"));
+    await count();
+    window.fetch = real;
+    ok("못 보내면 적어 두지 않는다", localStorage.getItem("osh:day") === null,
+       String(localStorage.getItem("osh:day")));
+    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
   }
   ok("기기를 가리는 번호를 보내지 않는다",
      !/deviceId|uuid|randomUUID/.test(count.toString() + bump.toString()));

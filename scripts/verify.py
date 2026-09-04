@@ -76,7 +76,7 @@ def make_page(name, script):
 
 def run_chrome(chrome, url, args, profile):
     subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
-                    "--user-data-dir=" + profile, "--virtual-time-budget=70000"] + args + [url],
+                    "--user-data-dir=" + profile, "--virtual-time-budget=150000"] + args + [url],
                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=240)
 
 
@@ -100,7 +100,7 @@ def main():
         with open(dom, "wb") as out:
             p = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
                                 "--user-data-dir=" + os.path.join(tmp, "p0"),
-                                "--virtual-time-budget=70000", "--dump-dom",
+                                "--virtual-time-budget=150000", "--dump-dom",
                                 "http://127.0.0.1:%d/__verify.html" % PORT],
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=300)
             out.write(p.stdout)
