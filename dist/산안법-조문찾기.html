@@ -269,6 +269,8 @@ nav.tabs svg{width:20px;height:20px}
   background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600}
 .seg button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .advnote{margin:0 2px 12px;font-size:12.5px;line-height:1.7;color:var(--ink-3)}
+/* 첫 화면의 소개 글만 한 줄쯤 내린다. 검색창에 바로 붙으면 숨이 가쁘다 */
+.advnote.top{margin-top:16px}
 .advnote b{color:var(--ink-2);font-weight:700}
 .basics section{margin:0 0 22px}
 .basics h2{margin:0 0 8px;font-size:15px;color:var(--accent)}
@@ -924,7 +926,7 @@ function renderAdv() {
        무엇인지 두 줄로 둔다. 검색창에 갈래가 바로 붙어 있으면 숨이 가쁘다.
        설치 권유는 팝업이 맡는다. */
     v.innerHTML =
-      '<p class="advnote">산업안전보건법·중대재해처벌법 등 <b>' + DOCS.length +
+      '<p class="advnote top">산업안전보건법·중대재해처벌법 등 <b>' + DOCS.length +
       '개 법령</b>을 기기에 담아 인터넷 없이 찾습니다.<br>' +
       '국가법령정보센터 원문 그대로이며, <b>법적 효력은 원문에 있습니다.</b></p>' +
       '<ul class="list">' +
