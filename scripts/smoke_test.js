@@ -381,6 +381,46 @@
   history.back(); await wait(450);
   ok("뒤로가기: 조문 닫힘", $$("#reader").hidden);
 
+  /* 목차·기타 탭에서 찾아도 결과는 검색 탭에 있다. 조문에 들어갔다 뒤로 왔을 때
+     원래 탭으로 튕기면 찾던 목록이 통째로 사라진다 — 다시 검색어를 쳐야 한다. */
+  document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(300);
+  await type("지게차");
+  ok("목차 탭에서 검색하면 검색 탭으로", curTab() === "search", curTab());
+  const found = cards().length;
+  ok("검색 결과가 나옴", found > 0, found + "건");
+  cards()[0].click(); await wait(450);
+  ok("결과에서 조문이 열림", !$$("#reader").hidden);
+  history.back(); await wait(450);
+  ok("뒤로가면 검색 탭 그대로", curTab() === "search", curTab());
+  ok("뒤로가면 결과도 그대로", cards().length === found, cards().length + "건");
+  ok("검색어도 그대로", $$("#q").value === "지게차", $$("#q").value);
+  history.back(); await wait(450);
+  ok("한 걸음 더 뒤로가면 목차", curTab() === "index", curTab());
+
+  /* 탭 단추는 그 탭의 첫 화면이다. 지난번에 어디까지 들어가 있었는지는 잊는다 */
+  document.querySelector("#v-index [data-doc]").click(); await wait(450);
+  ok("목차에서 법령 하나로 들어감", !!$$("#idxback"));
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(350);
+  ok("검색 탭으로 건너오면 검색어를 비운다", $$("#q").value === "", $$("#q").value);
+  document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(400);
+  ok("목차 탭으로 건너오면 법령 목록", !$$("#idxback") && document.querySelectorAll("#v-index .row").length >= 29,
+     document.querySelectorAll("#v-index .row").length + "건");
+  document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(400);
+  $$("[data-adv-go]").click(); await wait(450);
+  ok("기타 안쪽으로 들어감", !!$$("#advback"));
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(350);
+  document.querySelector('nav.tabs button[data-tab="adv"]').click(); await wait(450);
+  ok("기타 탭으로 건너오면 첫 화면", !$$("#advback"));
+
+  /* 다만 이미 그 탭에 있으면 그대로 둔다. 보던 결과가 잘못 눌러 날아가면 더 나쁘다 */
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(350);
+  await type("추락");
+  const keep = cards().length;
+  document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(350);
+  ok("같은 탭을 눌러도 검색어가 남음", $$("#q").value === "추락" && cards().length === keep,
+     $$("#q").value + " · " + cards().length + "건");
+  await type("");
+
   // 법령 판 — 언제 받아온 원문인지 밝히는 칸
   const stamp = txt($$("#stamp"));
   ok("헤더에 업데이트 날짜", /^업데이트 \d{4}-\d{2}-\d{2}$/.test(stamp), stamp);

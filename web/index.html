@@ -1571,7 +1571,7 @@ function hideReader() {
    홈 화면에 설치하면 브라우저 뒤로가기 버튼이 없어서, 왼쪽 끝을 쓸어넘기는
    제스처가 유일한 뒤로가기다. 그래서 온 길이 전부 히스토리에 남아 있어야 한다. */
 function snapshot() {
-  return { t: tab, doc: idxDoc, adv: advPage, key: (cur && !$("#reader").hidden) ? cur.key : null,
+  return { t: tab, q: $("#q").value, doc: idxDoc, adv: advPage, key: (cur && !$("#reader").hidden) ? cur.key : null,
     delegate: delegation, dq: $("#delegateq")?.value || "" };
 }
 
@@ -1585,6 +1585,17 @@ function applyView(v) {
   if (tabChanged) setTab(v.t);
   else if (docChanged && v.t === "index") renderIndex();
   else if (advChanged && v.t === "adv") renderAdv();
+  /* 검색어도 그 자리의 일부다. 되짚어 왔을 때 찾던 목록이 그대로 있어야 한다.
+     달라졌을 때만 다시 그린다 — 그냥 그리면 보던 자리에서 맨 위로 튄다. */
+  const q = v.q || "";
+  if (q !== $("#q").value) {
+    $("#q").value = q;
+    $("#clear").classList.toggle("on", !!q);
+    shown = 60;
+    hits = search(q);
+    syncChips();
+    renderSearch();
+  }
   if (v.key) {
     showRec(v.key);
     if (v.delegate != null) showDelegation(v.delegate, v.dq || "");
@@ -1599,10 +1610,18 @@ function go(v) {
   applyView(v);
 }
 
+/* 걸음을 늘리지 않고 지금 서 있는 자리만 고쳐 적는다. 검색어를 한 자 더 치는 것은
+   새 걸음이 아니다 — 걸음으로 세면 뒤로가기를 글자 수만큼 눌러야 빠져나온다. */
+function replaceView(v) {
+  const i = (history.state && history.state.i) || 0;
+  views[i] = v;
+  history.replaceState({ i: i }, "", "");
+}
+
 /* mode 는 예전 호출부와 시험 스크립트 때문에 남겨 둔다. 이제 모두 같게 다룬다. */
 function openRec(key, mode) {
   if (!BYKEY.get(key)) return;
-  go({ t: tab, doc: idxDoc, key: key });
+  go({ ...snapshot(), key: key, delegate: null, dq: "" });
 }
 
 /* ---------------- 배선 ---------------- */
@@ -1628,11 +1647,15 @@ function onQuery() {
   $("#clear").classList.toggle("on", !!q);
   clearTimeout(timer);
   timer = setTimeout(() => {
+    const moved = tab !== "search";
     shown = 60;
     hits = search(q);
-    if (tab !== "search") setTab("search");
+    /* 목차·기타 탭에서 찾아도 결과는 검색 탭에 있다. 건너온 걸음을 히스토리에
+       남기지 않으면, 조문에 들어갔다 뒤로 왔을 때 원래 탭으로 튕겨 결과가 사라진다. */
+    if (moved) setTab("search");
     syncChips();
     renderSearch();
+    (moved ? go : replaceView)(snapshot());
   }, q.length <= 1 ? 220 : 110);
 }
 
@@ -1896,7 +1919,13 @@ function start() {
     shown = 60; hits = search($("#q").value); renderSearch();
   };
   document.querySelectorAll("nav.tabs button").forEach(b =>
-    b.onclick = () => { if (tab !== b.dataset.tab) go({ t: b.dataset.tab, doc: idxDoc, adv: advPage, key: null }); });
+    b.onclick = () => {
+      const t = b.dataset.tab;
+      /* 이미 그 탭이면 그대로 둔다. 결과를 보다 잘못 누르면 검색어가 날아간다 */
+      if (tab === t) return;
+      /* 건너올 때는 그 탭의 첫 화면이다. 지난번에 어디까지 들어가 있었는지는 잊는다 */
+      go({ t: t, q: t === "search" ? "" : $("#q").value, doc: null, adv: null, key: null });
+    });
   document.addEventListener("click", e => {
     const delegate = e.target.closest("[data-delegate]");
     if (delegate && cur) { go({ ...snapshot(), delegate: +delegate.dataset.delegate, dq: "" }); return; }
