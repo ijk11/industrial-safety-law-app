@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0e6b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="쓰임새">
+<title>산안법 조문 찾기 — 쓰임새</title>
+<style>
+:root{
+  --ground:#f7f8f6; --surface:#ffffff; --surface-2:#eef1ee;
+  --ink:#12171a; --ink-2:#4a554e; --ink-3:#78837c;
+  --line:#dde3de; --line-2:#c9d2cb;
+  --accent:#0e6b45; --accent-ink:#ffffff; --accent-soft:#e2efe8;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#0f1412; --surface:#161c19; --surface-2:#1d2521;
+    --ink:#e7ede9; --ink-2:#a3b0a8; --ink-3:#7e8b84;
+    --line:#26302b; --line-2:#33403a;
+    --accent:#4fcf97; --accent-ink:#08140e; --accent-soft:#1a2b23;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+  padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  -webkit-text-size-adjust:100%}
+main{max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;margin:0 0 18px}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-size:15px;font-weight:700;flex:none}
+h1{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.when{margin-left:auto;font-size:11.5px;color:var(--ink-3);text-align:right;line-height:1.4}
+button{font:inherit;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);
+  color:var(--ink-2);padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+button:hover{background:var(--surface-2)}
+
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 22px}
+.big div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 12px}
+.big .n{font-size:26px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em}
+.big .k{margin-top:3px;font-size:11.5px;color:var(--ink-3);line-height:1.45;word-break:keep-all}
+.big .lead .n{color:var(--accent)}
+
+h2{margin:0 0 9px;font-size:13px;font-weight:700;color:var(--accent)}
+section{margin:0 0 22px}
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 13px}
+.row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .d{width:6.4em;flex:none;font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.row .v{width:3.1em;flex:none;text-align:right;font-size:13px;font-weight:700;
+  font-variant-numeric:tabular-nums}
+.row .b{flex:1;min-width:0;height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.row .b i{display:block;height:100%;border-radius:5px;background:var(--accent)}
+.row.today .d{color:var(--accent);font-weight:700}
+.row .name{flex:1;min-width:0;font-size:12.5px;color:var(--ink-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace}
+
+.sum{margin:9px 2px 0;font-size:12px;color:var(--ink-3);line-height:1.7}
+.note{margin:22px 0 0;padding:12px 14px;background:var(--surface-2);border-radius:11px;
+  font-size:11.5px;line-height:1.8;color:var(--ink-3)}
+.note b{color:var(--ink-2);font-weight:700}
+.note ul{margin:5px 0 0;padding-left:16px}
+.msg{padding:26px 4px;text-align:center;color:var(--ink-3);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark">安</div>
+    <h1>쓰임새</h1>
+    <div class="when" id="when"></div>
+    <button id="again">새로고침</button>
+  </header>
+  <div id="out"><div class="msg">읽는 중…</div></div>
+</main>
+
+<script>
+"use strict";
+/* 앱이 올려 둔 숫자를 그대로 읽어 보여 준다. 이 쪽에서는 아무것도 쓰지 않는다.
+   읽기는 인증이 필요 없다 — 규칙이 stats 의 숫자를 1씩 올리는 것과 읽기만 허용한다. */
+var PROJECT = "industrial-safety-law-app";
+var KEY = "AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M";
+var URL_ = "https://firestore.googleapis.com/v1/projects/" + PROJECT +
+  "/databases/(default)/documents/stats?key=" + KEY + "&pageSize=300";
+
+var $ = function (s) { return document.querySelector(s); };
+var esc = function (s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+};
+
+/* 앱은 한국 시각으로 날짜를 끊는다. 여기서도 같게 끊어야 "오늘"이 어긋나지 않는다 */
+function todayKST() {
+  return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+}
+
+function card(n, k, lead) {
+  return '<div' + (lead ? ' class="lead"' : "") + '><div class="n">' +
+    n.toLocaleString() + '</div><div class="k">' + k + "</div></div>";
+}
+
+function draw(docs) {
+  var daily = {}, vers = {}, one = { devices: 0, install: 0 };
+  docs.forEach(function (d) {
+    var name = d.name.split("/").pop();
+    var n = parseInt((((d.fields || {}).n || {}).integerValue) || 0, 10);
+    if (one.hasOwnProperty(name)) one[name] = n;
+    else if (name.indexOf("daily-") === 0) daily[name.slice(6)] = n;
+    else if (name.indexOf("ver-") === 0) vers[name.slice(4)] = n;
+  });
+
+  var today = todayKST();
+  var days = Object.keys(daily).sort().reverse();
+  var recent = days.slice(0, 30);
+  var wide = 1;
+  recent.forEach(function (k) { if (daily[k] > wide) wide = daily[k]; });
+
+  var h = '<div class="big">' +
+    card(one.devices, "한 번이라도 연 기기", true) +
+    card(one.install, "홈 화면에 설치") +
+    card(daily[today] || 0, "오늘 연 기기") + "</div>";
+
+  h += "<section><h2>날짜별로 앱을 연 기기</h2>";
+  if (!recent.length) h += '<div class="msg">아직 쌓인 날이 없습니다.</div>';
+  else {
+    h += '<div class="rows">' + recent.map(function (k) {
+      return '<div class="row' + (k === today ? " today" : "") + '">' +
+        '<div class="d">' + esc(k.slice(5)) + "</div>" +
+        '<div class="b"><i style="width:' +
+        Math.max(3, Math.round(daily[k] * 100 / wide)) + '%"></i></div>' +
+        '<div class="v">' + daily[k] + "</div></div>";
+    }).join("") + "</div>";
+    var got = 0;
+    recent.forEach(function (k) { got += daily[k]; });
+    h += '<div class="sum">최근 ' + recent.length + "일 합계 " + got +
+      " · 하루 평균 " + (got / recent.length).toFixed(1) +
+      " · 집계 시작 " + esc(days[days.length - 1]) + "</div>";
+  }
+  h += "</section>";
+
+  var vk = Object.keys(vers).sort(function (a, b) { return vers[b] - vers[a]; });
+  if (vk.length) {
+    h += "<section><h2>판마다 갈아탄 기기</h2><div class=\"rows\">" +
+      vk.map(function (k) {
+        return '<div class="row"><div class="name">' + esc(k) + "</div>" +
+          '<div class="v">' + vers[k] + "</div></div>";
+      }).join("") + "</div>" +
+      '<div class="sum">새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다.</div></section>';
+  }
+
+  h += '<div class="note"><b>이 숫자의 한계</b><ul>' +
+    "<li>기기 안 저장에 기대므로, 브라우저 자료를 지우거나 다른 브라우저로 열면 새 기기로 센다</li>" +
+    "<li>사생활 보호 모드는 아예 세지 않는다 — 실제 이용자는 이보다 조금 더 많다</li>" +
+    "<li>만들면서 여는 것(localhost)과 CI 는 세지 않는다</li>" +
+    "<li>2026-09-04 치는 만들며 돌린 검사가 섞여 믿을 수 없다</li>" +
+    "</ul>보내는 것은 숫자를 올려 달라는 말 한 마디뿐이다. 누가·어디서·무엇을 봤는지는 " +
+    "보내지 않고, 기기를 가리는 번호조차 서버로 가지 않는다.</div>";
+
+  $("#out").innerHTML = h;
+}
+
+function load() {
+  $("#again").disabled = true;
+  fetch(URL_, { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      draw(j.documents || []);
+      var t = new Date();
+      $("#when").textContent = "읽은 때 " +
+        String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0");
+    })
+    .catch(function (e) {
+      $("#out").innerHTML = '<div class="msg">읽지 못했습니다. 인터넷을 확인해 주세요.<br>' +
+        esc(e.message) + "</div>";
+    })
+    .then(function () { $("#again").disabled = false; });
+}
+
+$("#again").onclick = load;
+load();
+</script>
+</body>
+</html>

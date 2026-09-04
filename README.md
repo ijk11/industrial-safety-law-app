@@ -173,7 +173,16 @@ python scripts/usage.py
 curl -s "https://firestore.googleapis.com/v1/projects/industrial-safety-law-app/databases/(default)/documents/stats?key=AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M"
 ```
 
-Firebase 콘솔 → Firestore Database → `stats` 에서도 같은 숫자를 본다. 휴대폰으로도 된다.
+휴대폰으로는 배포에 함께 올라가는 **쓰임새 화면**이 편하다. 앱 어디에도 걸어 두지 않고
+`robots.txt` 로 검색엔진도 막았다 — 주소를 아는 사람만 연다.
+
+    https://ijk11.github.io/industrial-safety-law-app/stats.html
+
+깔려 있는 기기·설치 수·오늘 연 기기를 큰 숫자로 보이고, 날짜별 막대와 판별 갈아탄 수를
+잇는다. 홈 화면에 붙여 두면 앱처럼 열린다. 읽기만 하고 아무것도 쓰지 않으며,
+[`web/stats.html`](web/stats.html) 한 장이 전부다 — 앱의 오프라인 캐시에는 넣지 않는다.
+
+Firebase 콘솔 → Firestore Database → `stats` 에서도 같은 숫자를 본다.
 
 API 키가 공개인 것은 설계대로다. 보안 규칙이 `stats/{doc}` 의 `n` 을 **1씩 올리는 것만**
 허용하고, 그 밖의 쓰기와 다른 자리는 모두 막는다.

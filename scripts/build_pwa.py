@@ -192,7 +192,8 @@ def asset_list():
     다른 차례로 적으면 sw.js 가 달라져, 같은 원문인데도 판이 갈린 것처럼 보인다.
     이름순으로 못 박는다.
     """
-    skip = {"sw.js", "index.html", "robots.txt", ".nojekyll"}
+    # stats.html 은 앱이 아니라 내가 숫자를 보는 딴 쪽이다. 오프라인 캐시에 넣지 않는다
+    skip = {"sw.js", "index.html", "robots.txt", ".nojekyll", "stats.html"}
     rest = []
     for base, _, files in os.walk(WEB):
         for fn in files:

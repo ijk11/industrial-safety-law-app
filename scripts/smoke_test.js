@@ -692,6 +692,14 @@
        String(localStorage.getItem("osh:day")));
     for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
   }
+  /* 쓰임새 화면은 내가 숫자를 보는 딴 쪽이다. 앱의 오프라인 캐시에 섞이면
+     쓰는 사람이 쓰지도 않을 것을 함께 내려받게 된다. */
+  {
+    const sw = await (await fetch("sw.js", { cache: "no-store" })).text();
+    ok("쓰임새 화면은 앱 캐시에 넣지 않는다", sw.indexOf("stats.html") < 0);
+    const st = await fetch("stats.html", { cache: "no-store" });
+    ok("쓰임새 화면이 함께 올라감", st.ok, String(st.status));
+  }
   ok("기기를 가리는 번호를 보내지 않는다",
      !/deviceId|uuid|randomUUID/.test(count.toString() + bump.toString()));
 
