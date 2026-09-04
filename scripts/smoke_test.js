@@ -559,13 +559,26 @@
 
   $$('#v-adv [data-adv-go="basics"]').click(); await wait(400);
   ok("기초 법지식으로 들어감", /기초 법지식/.test(txt($$("#v-adv .crumb"))) && !!$$("#v-adv .basics"));
-  const terms = [...document.querySelectorAll("#v-adv .basics dt")].map(e => txt(e));
+  const terms = [...document.querySelectorAll("#v-adv .basics .tn")].map(e => txt(e));
   ok("법령·행정규칙과 조치의 개념 설명",
      ["법령", "법(법률)", "시행령(대통령령)", "시행규칙(부령)", "행정규칙", "고시", "훈령", "예규",
       "지침", "과태료", "사법조치", "형벌(징역·벌금)"].every(t => terms.includes(t)), terms.join(" / "));
   const basicText = txt($$("#v-adv .basics"));
   ok("과태료와 사법조치의 차이를 설명", /행정질서벌/.test(basicText) && /전과가 남지/.test(basicText) &&
      /입건·수사·검찰 송치/.test(basicText) && /유죄 확정을 뜻하지/.test(basicText));
+  /* 열두 항목을 다 펼쳐 두면 화면 서너 개가 된다. 접어 두고 눌러야 나온다 */
+  const bodies = [...document.querySelectorAll("#v-adv .basics .tb")];
+  ok("자세한 설명은 접혀 있음", bodies.length === 12 && bodies.every(e => e.hidden), bodies.length + "개");
+  const ones = [...document.querySelectorAll("#v-adv .basics .ts")].map(e => txt(e));
+  ok("접은 채로도 한 줄 요약은 보임", ones.length === 12 &&
+     ones.some(t => /전과가 남지 않는다/.test(t)) && ones.some(t => /국회가 의결해 만든다/.test(t)),
+     ones.slice(0, 3).join(" / "));
+  const feeTerm = [...document.querySelectorAll("#v-adv .basics .term")].find(b => txt(b).indexOf("과태료") === 0);
+  feeTerm.click(); await wait(300);
+  ok("누르면 펼쳐짐", !feeTerm.nextElementSibling.hidden && feeTerm.classList.contains("open"));
+  feeTerm.click(); await wait(300);
+  ok("다시 누르면 접힘", feeTerm.nextElementSibling.hidden);
+  feeTerm.click(); await wait(300);
   const basicRefs = [...document.querySelectorAll("#v-adv .basics .reflink[data-key]")];
   ok("기초 법지식의 근거 조문 연결", basicRefs.length === 2 && !$$("#v-adv .basics .reflink.off"));
   if (basicRefs.length) basicRefs[0].click(); await wait(400);

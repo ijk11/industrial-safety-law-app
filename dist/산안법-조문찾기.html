@@ -274,14 +274,22 @@ nav.tabs svg{width:20px;height:20px}
 .advnote b{color:var(--ink-2);font-weight:700}
 .basics section{margin:0 0 22px}
 .basics h2{margin:0 0 8px;font-size:15px;color:var(--accent)}
-.basics dl{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px}
-.basics dl>div{padding:13px 0;border-bottom:1px solid var(--line)}
-.basics dl>div:last-child{border-bottom:0}
-.basics dt{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--ink)}
-.basics dd{margin:0;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
-.basics .note{margin:10px 2px 0;font-size:12.5px;line-height:1.75;color:var(--ink-2)}
-.basics .sources{margin:8px 2px 0;font-size:11.5px;line-height:1.8;color:var(--ink-3)}
-.basics .sources a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
+/* 이름과 한 줄만 내놓고 자세한 것은 눌러야 나온다. 열두 항목을 다 펼쳐 두면
+   화면 서너 개가 되어, 정작 무엇이 어떻게 다른지가 묻힌다. */
+.terms{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.term{display:flex;width:100%;align-items:baseline;gap:9px;padding:12px 14px;
+  border:0;border-top:1px solid var(--line);background:none;text-align:left;color:var(--ink)}
+.terms>.term:first-child{border-top:0}
+.term .tn{flex:none;font-size:14px;font-weight:700}
+.term .ts{flex:1;min-width:0;font-size:12px;line-height:1.55;color:var(--ink-3);word-break:keep-all}
+.term svg{flex:none;align-self:center;color:var(--ink-3);transition:transform .15s}
+.term.open{color:var(--accent)}
+.term.open .ts{color:var(--accent)}
+.term.open svg{transform:rotate(180deg);color:var(--accent)}
+.tb{padding:0 14px 14px;font-size:13.5px;line-height:1.75;color:var(--ink-2)}
+.tb[hidden]{display:none}
+.tb .src{display:block;margin-top:9px;font-size:11.5px;line-height:1.8;color:var(--ink-3)}
+.tb .src a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
 .fold{width:100%;margin:0 0 8px;padding:12px;border:1px solid var(--line-2);border-radius:10px;
   background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;text-align:left}
 .fold.open{border-color:var(--accent);color:var(--accent)}
@@ -950,6 +958,14 @@ function renderAdv() {
   v.innerHTML = h;
   if (advPage === "ver") mountVersion();
   v.querySelectorAll("[data-adv]").forEach(b => b.onclick = () => { advWhat = b.dataset.adv; renderAdv(); });
+  /* 용어 하나를 눌러 펼친다. 여럿을 함께 펼쳐 두고 견주어 보는 일이 잦아, 하나를
+     열 때 다른 것을 닫지는 않는다. */
+  v.querySelectorAll(".term").forEach(b => b.onclick = () => {
+    const box = b.nextElementSibling;
+    box.hidden = !box.hidden;
+    b.classList.toggle("open", !box.hidden);
+    b.setAttribute("aria-expanded", String(!box.hidden));
+  });
   v.querySelectorAll("[data-sc]").forEach(b => b.onclick = () => {
     const box = $("#" + b.dataset.sc);
     box.hidden = !box.hidden;
@@ -967,33 +983,56 @@ function advMenu(id, title, sub) {
 
 /* 설명은 앱 안에 담아 오프라인에서도 읽는다. 원문 링크는 내용을 확인할 때 쓴다. */
 function basicsPage() {
-  const terms = rows => '<dl>' + rows.map(([name, body]) =>
-    '<div><dt>' + esc(name) + '</dt><dd>' + esc(body) + '</dd></div>').join('') + '</dl>';
-  const source = (url, label) => '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>';
+  const CH = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"' +
+    ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  const src = (url, label) =>
+    '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>';
+  /* 한 줄은 셋을 갈라 주는 말로 짓는다. 접은 채로도 차이가 잡혀야 펼칠 일이 준다 */
+  const terms = rows => '<div class="terms">' + rows.map(([name, one, body, more]) =>
+    '<button class="term" aria-expanded="false"><span class="tn">' + esc(name) + '</span>' +
+    '<span class="ts">' + esc(one) + '</span>' + CH + '</button>' +
+    '<div class="tb" hidden>' + esc(body) +
+    (more ? '<span class="src">' + more + '</span>' : "") + "</div>").join("") + "</div>";
+
   return '<article class="basics">' +
     '<section><h2>법령의 종류</h2>' + terms([
-      ["법령", "법률과 대통령령·총리령·부령 등을 함께 부르는 말입니다. 상위 법령에 어긋나게 하위 규정을 정할 수는 없습니다."],
-      ["법(법률)", "국회가 의결해 만드는 규범입니다. 국민의 권리·의무와 국가 운영의 기본 사항을 정합니다. 산업안전보건법이 여기에 해당합니다."],
-      ["시행령(대통령령)", "법률이 구체적으로 위임한 사항이나 법률을 집행하는 데 필요한 사항을 대통령이 정합니다. 법률에서 ‘대통령령으로 정한다’고 한 내용을 찾아볼 곳입니다."],
-      ["시행규칙(부령)", "법률·시행령의 위임사항이나 집행에 필요한 세부 절차·서식 등을 부처 장관이 정합니다. 총리령으로 정하는 시행규칙도 있으며, 산안법 시행규칙은 고용노동부령입니다."]
-    ]) + '<p class="note">이 앱의 「기준규칙」과 「취업제한규칙」도 고용노동부령입니다.</p>' +
-    '<p class="sources">근거: ' + source("https://www.law.go.kr/법령/대한민국헌법", "헌법 제40조·제75조·제95조") + '</p></section>' +
+      ["법령", "법률과 그 아래 명령을 아우르는 말",
+       "법률과 대통령령·총리령·부령 등을 함께 부르는 말입니다. 상위 법령에 어긋나게 하위 규정을 정할 수는 없습니다.",
+       "근거: " + src("https://www.law.go.kr/법령/대한민국헌법", "헌법 제40조·제75조·제95조")],
+      ["법(법률)", "국회가 의결해 만든다",
+       "국회가 의결해 만드는 규범입니다. 국민의 권리·의무와 국가 운영의 기본 사항을 정합니다. 산업안전보건법이 여기에 해당합니다."],
+      ["시행령(대통령령)", "법이 위임한 것을 대통령이 정한다",
+       "법률이 구체적으로 위임한 사항이나 법률을 집행하는 데 필요한 사항을 대통령이 정합니다. 법률에서 ‘대통령령으로 정한다’고 한 내용을 찾아볼 곳입니다."],
+      ["시행규칙(부령)", "세부 절차와 서식을 장관이 정한다",
+       "법률·시행령의 위임사항이나 집행에 필요한 세부 절차·서식 등을 부처 장관이 정합니다. 총리령으로 정하는 시행규칙도 있으며, 산안법 시행규칙은 고용노동부령입니다. 이 앱의 「기준규칙」과 「취업제한규칙」도 고용노동부령입니다."]
+    ]) + "</section>" +
     '<section><h2>행정규칙의 종류</h2>' + terms([
-      ["행정규칙", "행정기관이 업무 처리와 법령 집행의 기준을 정한 규정입니다. 원칙적으로 행정기관 내부에 적용하며, 훈령·예규·고시 등의 형식으로 발령합니다."],
-      ["고시", "행정기관이 법령에 따라 일정한 사항을 일반에게 알리는 형식입니다. 산업안전보건 분야에서는 법령이 위임한 기술기준·절차 등을 정할 때에도 쓰입니다."],
-      ["훈령", "상급기관이 하급기관의 업무 처리와 권한 행사에 관해 내리는 일반적인 지시입니다. 근로감독관 집무규정이 그 예입니다."],
-      ["예규", "반복되는 행정사무를 통일되게 처리하도록 정한 기준입니다. 이 앱의 근로자 건강진단 관리규정 등이 해당합니다."],
-      ["지침", "업무나 작업의 방법·기준을 안내하는 제목에 쓰이는 말입니다. 제목만으로 법적 성격이 정해지지는 않으며, 이 앱의 표준안전작업·기술지침 17건은 고시입니다."]
-    ]) + '<p class="note">고시 등도 법령의 구체적인 위임에 따라 내용을 보충하면, 위임 범위 안에서 국민에게 적용되는 법적 기준이 될 수 있습니다. 이름만으로 효력을 판단하지 않습니다.</p>' +
-    '<p class="sources">참고: ' + source("https://www.moleg.go.kr/mpbleg/mpblegInfo.mo?mid=a10402020000&mpb_leg_pst_seq=129274", "법제처 · 행정규칙과 법적 효력") + '</p></section>' +
+      ["행정규칙", "행정기관이 정한 업무 처리 기준",
+       "행정기관이 업무 처리와 법령 집행의 기준을 정한 규정입니다. 원칙적으로 행정기관 내부에 적용하며, 훈령·예규·고시 등의 형식으로 발령합니다."],
+      ["고시", "위임받은 기술기준을 정해 알린다",
+       "행정기관이 법령에 따라 일정한 사항을 일반에게 알리는 형식입니다. 산업안전보건 분야에서는 법령이 위임한 기술기준·절차 등을 정할 때에도 씁니다. 고시 등도 법령의 구체적인 위임에 따라 내용을 보충하면, 위임 범위 안에서 국민에게 적용되는 법적 기준이 될 수 있습니다.",
+       "참고: " + src("https://www.moleg.go.kr/mpbleg/mpblegInfo.mo?mid=a10402020000&mpb_leg_pst_seq=129274",
+                     "법제처 · 행정규칙과 법적 효력")],
+      ["훈령", "상급기관이 하급기관에 내리는 지시",
+       "상급기관이 하급기관의 업무 처리와 권한 행사에 관해 내리는 일반적인 지시입니다. 근로감독관 집무규정이 그 예입니다."],
+      ["예규", "되풀이되는 사무의 통일된 처리 기준",
+       "반복되는 행정사무를 통일되게 처리하도록 정한 기준입니다. 이 앱의 근로자 건강진단 관리규정 등이 해당합니다."],
+      ["지침", "제목에 쓰는 말일 뿐, 효력은 따로다",
+       "업무나 작업의 방법·기준을 안내하는 제목에 쓰이는 말입니다. 제목만으로 법적 성격이 정해지지는 않으며, 이 앱의 표준안전작업·기술지침 17건은 고시입니다. 이름만으로 효력을 판단하지 않습니다."]
+    ]) + "</section>" +
     '<section><h2>위반했을 때의 조치</h2>' + terms([
-      ["과태료", "법에서 정한 의무 위반에 부과하는 행정질서벌입니다. 산안법에서는 고용노동부장관이 부과하며, 형사처벌이 아니므로 전과가 남지 않습니다."],
-      ["사법조치", "범죄 혐의에 대해 입건·수사·검찰 송치 등 형사절차를 진행하는 것입니다. 검사가 기소 여부를 결정하고, 기소되면 법원이 유무죄와 형을 판단합니다. 사법조치 자체가 유죄 확정을 뜻하지는 않습니다."],
-      ["형벌(징역·벌금)", "범죄에 대해 법원이 정하는 처벌입니다. 벌금도 형벌이며, 징역·벌금형이 확정되면 전과가 남습니다."]
-    ]) + '<p class="sources">앱 속 근거: ' + refBtn("산업안전보건법", "제175조") + ' · ' +
-    refBtn("근로감독관 집무규정(산업안전보건)", "제31조") + '<br>참고: ' +
-    source("https://www.easylaw.go.kr/CSP/EasyLawInfoR.laf?csmSeq=618&easySeq=1761", "생활법령정보 · 과태료와 벌금의 차이") + '</p></section>' +
-    '</article>';
+      ["과태료", "행정질서벌 · 전과가 남지 않는다",
+       "법에서 정한 의무 위반에 부과하는 행정질서벌입니다. 산안법에서는 고용노동부장관이 부과하며, 형사처벌이 아니므로 전과가 남지 않습니다.",
+       "앱 속 근거: " + refBtn("산업안전보건법", "제175조") + "<br>참고: " +
+       src("https://www.easylaw.go.kr/CSP/EasyLawInfoR.laf?csmSeq=618&easySeq=1761",
+           "생활법령정보 · 과태료와 벌금의 차이")],
+      ["사법조치", "형사절차를 밟는 것 · 유죄 확정은 아니다",
+       "범죄 혐의에 대해 입건·수사·검찰 송치 등 형사절차를 진행하는 것입니다. 검사가 기소 여부를 결정하고, 기소되면 법원이 유무죄와 형을 판단합니다. 사법조치 자체가 유죄 확정을 뜻하지는 않습니다.",
+       "앱 속 근거: " + refBtn("근로감독관 집무규정(산업안전보건)", "제31조")],
+      ["형벌(징역·벌금)", "법원이 정하는 처벌 · 전과가 남는다",
+       "범죄에 대해 법원이 정하는 처벌입니다. 벌금도 형벌이며, 징역·벌금형이 확정되면 전과가 남습니다."]
+    ]) + "</section>" +
+    "</article>";
 }
 
 function penPage() {
