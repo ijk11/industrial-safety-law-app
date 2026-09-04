@@ -173,7 +173,7 @@ python scripts/usage.py
 curl -s "https://firestore.googleapis.com/v1/projects/industrial-safety-law-app/databases/(default)/documents/stats?key=AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M"
 ```
 
-휴대폰으로는 배포에 함께 올라가는 **쓰임새 화면**이 편하다. 앱 어디에도 걸어 두지 않고
+휴대폰으로는 배포에 함께 올라가는 **현황판**이 편하다. 앱 어디에도 걸어 두지 않고
 `robots.txt` 로 검색엔진도 막았다 — 주소를 아는 사람만 연다.
 
     https://ijk11.github.io/industrial-safety-law-app/stats.html
