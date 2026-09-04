@@ -91,16 +91,9 @@ TAIL_EXTRA = """<style>
 <script>
 if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").then(reg => {
-      reg.addEventListener("updatefound", () => {
-        const sw = reg.installing;
-        if (!sw) return;
-        sw.addEventListener("statechange", () => {
-          if (sw.state === "installed" && navigator.serviceWorker.controller && window.toast)
-            window.toast("새 법령 판을 받아 두었습니다. 앱을 닫았다 열면 바뀝니다.", 6000);
-        });
-      });
-    }).catch(() => {});
+    /* 새 판을 받아 두었다는 알림은 앱 쪽 watchUpdate() 가 팝업으로 맡는다.
+       잠깐 뜨는 토스트로만 알리면 놓쳐, 새 판을 두고도 옛 판을 계속 쓰게 된다. */
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
 </script>"""

@@ -622,6 +622,27 @@
   ok("기기를 가리는 번호를 보내지 않는다",
      !/deviceId|uuid|randomUUID/.test(count.toString() + bump.toString()));
 
+  // 새 판 알림 — 판마다 한 번씩만 물어야 한다
+  {
+    const $u = () => $$("#update");
+    localStorage.removeItem("osh:updSeen");
+    const fake = { waiting: { postMessage: () => {} } };
+    const ver = await pendingVersion();
+    ok("기다리는 판의 이름을 읽음", /^osh-|^new$/.test(ver), ver);
+    await showUpdate(fake); await wait(300);
+    ok("새 판이면 알린다", !$u().hidden);
+    ok("껐다 켜라고 일러 준다", /껐다 켜면/.test(txt($u())), txt($$("#update p")).slice(0, 30));
+    ok("바로 바꿀 길도 준다", !!$$("#updgo"));
+    $$("#updno").click(); await wait(250);
+    ok("물리면 닫힌다", $u().hidden);
+    await showUpdate(fake); await wait(300);
+    ok("같은 판은 다시 묻지 않는다", $u().hidden);
+    store.set("updSeen", "osh-지난판");
+    await showUpdate(fake); await wait(300);
+    ok("다음 판이 나오면 다시 묻는다", !$u().hidden);
+    $$("#updno").click(); await wait(250);
+  }
+
   // 글꼴
   try {
     await document.fonts.ready;

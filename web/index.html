@@ -463,6 +463,18 @@ nav.tabs svg{width:20px;height:20px}
   </div>
 </div>
 
+<div class="sheet" id="update" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="updtitle">
+    <h2 id="updtitle">새 판이 준비되었습니다</h2>
+    <p>법령이나 기능이 바뀌었습니다. <b>앱을 껐다 켜면</b> 바뀝니다.
+       지금 바로 바꾸셔도 됩니다.</p>
+    <div class="btns">
+      <button id="updno">나중에</button>
+      <button id="updgo" class="go">지금 바꾸기</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 
@@ -1691,6 +1703,53 @@ function maybeInstall() {
   };
 }
 
+/* ---------------- 새 판이 준비되었을 때 ----------------
+   새 판은 열 때마다 뒤에서 저절로 받아 둔다. 다만 갈아타는 것은 미뤄 둔다 —
+   읽는 도중에 바뀌면 보던 조문이 사라지기 때문이다.
+
+   그 사실을 잠깐 뜨는 토스트로만 알리면 놓친다. 실제로 새 판을 받아 놓고도
+   옛 판을 계속 쓰는 일이 있었다. 판마다 한 번씩 팝업으로 알린다 —
+   물리면 그 판은 다시 묻지 않고, 다음 판이 나오면 다시 알린다. */
+async function pendingVersion() {
+  /* 기다리는 판의 이름은 서버의 sw.js 에 적혀 있다. 못 읽으면 이름 없이 다룬다. */
+  try {
+    const t = await (await fetch("sw.js", { cache: "no-store" })).text();
+    return (t.match(/osh-[0-9a-f]+/) || [])[0] || "new";
+  } catch (e) { return "new"; }
+}
+
+async function showUpdate(reg) {
+  if (!reg || !reg.waiting || !$("#update").hidden) return;
+  const id = await pendingVersion();
+  if (store.get("updSeen", "") === id) return;
+  if ($("#install")) $("#install").hidden = true;   /* 두 팝업이 겹치지 않게 */
+  $("#update").hidden = false;
+  $("#updno").onclick = () => { store.set("updSeen", id); $("#update").hidden = true; };
+  $("#updgo").onclick = () => {
+    store.set("updSeen", id);
+    const b = $("#updgo");
+    b.disabled = true; b.textContent = "바꾸는 중…";
+    navigator.serviceWorker.addEventListener("controllerchange", () => location.reload(), { once: true });
+    reg.waiting.postMessage({ type: "skipWaiting" });
+  };
+}
+
+function watchUpdate() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (!reg) return;
+    showUpdate(reg);                     /* 지난번에 받아 두고 기다리던 판 */
+    reg.addEventListener("updatefound", () => {
+      const sw = reg.installing;
+      if (!sw) return;
+      sw.addEventListener("statechange", () => {
+        /* controller 가 있어야 '새로 깐 것' 이 아니라 '갈아탈 것' 이다 */
+        if (sw.state === "installed" && navigator.serviceWorker.controller) showUpdate(reg);
+      });
+    });
+  }).catch(() => {});
+}
+
 function start() {
   const groups = ["전체"].concat([...new Set(DOCS.map(d => d.군))]);
   $("#chips").innerHTML = groups.map(g =>
@@ -1791,6 +1850,7 @@ function start() {
   $("#boot").remove();
   $("#app").hidden = false;
   maybeInstall();
+  watchUpdate();
   count();
 }
 
@@ -1844,16 +1904,9 @@ boot().catch(e => {
 <script>
 if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").then(reg => {
-      reg.addEventListener("updatefound", () => {
-        const sw = reg.installing;
-        if (!sw) return;
-        sw.addEventListener("statechange", () => {
-          if (sw.state === "installed" && navigator.serviceWorker.controller && window.toast)
-            window.toast("새 법령 판을 받아 두었습니다. 앱을 닫았다 열면 바뀝니다.", 6000);
-        });
-      });
-    }).catch(() => {});
+    /* 새 판을 받아 두었다는 알림은 앱 쪽 watchUpdate() 가 팝업으로 맡는다.
+       잠깐 뜨는 토스트로만 알리면 놓쳐, 새 판을 두고도 옛 판을 계속 쓰게 된다. */
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
 </script>
