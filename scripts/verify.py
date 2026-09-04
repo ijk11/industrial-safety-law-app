@@ -83,9 +83,10 @@ def run_chrome(chrome, url, args, profile):
 def main():
     # API 형식·항호 문맥을 잘못 풀면 클릭은 되면서 엉뚱한 조문으로 간다.
     # 브라우저 검사에 앞서 위임 자료 파서도 같은 배포 관문에서 검사한다.
-    check = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "test_delegation.py")])
-    if check.returncode:
-        return check.returncode
+    for test in ("test_delegation.py", "test_layout.py"):
+        check = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", test)])
+        if check.returncode:
+            return check.returncode
     if not os.path.exists(os.path.join(WEB, "index.html")):
         raise SystemExit("web/index.html 이 없습니다. python scripts/build_pwa.py 를 먼저 돌리세요.")
     chrome = find_chrome()

@@ -134,6 +134,29 @@
        ok2 ? DOCS[ok2.d].약호 + " " + ok2.no : "링크 없음");
   }
 
+  // 줄바꿈: 문장 끝·조문 인용·좁은 표 열을 따로 확인한다.
+  {
+    const notice = RECS.find(r => r.kind === 0 && DOCS[r.d].법령명 === "방호장치 안전인증 고시" && r.no === "제7조");
+    ok("고시 문장 끝을 다목으로 잘못 나누지 않음", notice &&
+       !/말한\n\s*다\./.test(notice.body) && /말한다\.\n\s*다\./.test(notice.body));
+    const rest = RECS.find(r => r.d === 2 && r.no === "별표 21의2");
+    ok("휴게시설 별표의 인쇄용 줄바꿈 복원", rest && rest.body.includes("면적으로 정한 경우") &&
+       rest.body.includes("갖춰져 있어야") && rest.body.includes("공동휴게시설은 사업장마다") &&
+       !/한\n다[.)]/.test(rest.body));
+    ok("일반 본문은 단어 단위로 줄바꿈", getComputedStyle(document.body).wordBreak === "keep-all");
+    const table = RECS.find(r => r.d === 1 && r.no === "별표 32");
+    openRec(table.key); await wait(150);
+    const cells = [...document.querySelectorAll("#rbody .grid td,#rbody .grid th")];
+    ok("복잡한 표의 열이 두세 글자 폭으로 찌그러지지 않음", cells.length > 10 &&
+       cells.every(c => c.getBoundingClientRect().width >= 60));
+    ok("변환한 표의 테두리를 본문 글자로 남기지 않음",
+       [...document.querySelectorAll("#rbody .tbltext")].every(p => !/[\u2500-\u257f]/.test(p.textContent)));
+    ok("넓은 표는 표 안에서만 가로 스크롤", $$("#rbody").scrollWidth <= $$("#rbody").clientWidth + 2);
+    history.back(); await wait(250);
+    const ref = $$("#rbody a.ref");
+    ok("조문 번호 링크는 중간에서 줄을 바꾸지 않음", ref && getComputedStyle(ref).whiteSpace === "nowrap");
+  }
+
   // 번호 없는 위임 — 실제 원문의 위치와 모든 목적지를 전수 확인한다.
   {
     let total = 0, valid = true, preserved = true;

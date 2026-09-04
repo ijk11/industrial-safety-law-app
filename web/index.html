@@ -84,7 +84,7 @@ body{
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--font-ui);
   font-size:15px; line-height:1.6;
-  -webkit-text-size-adjust:100%; overflow-wrap:anywhere;
+  -webkit-text-size-adjust:100%; word-break:keep-all; overflow-wrap:anywhere;
 }
 button,input{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
@@ -263,7 +263,7 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .pen li{margin:0 0 7px;padding-left:10px;border-left:2px solid var(--line-2)}
 .pen li:last-child{margin-bottom:0}
 .pen li .w{display:block;color:var(--ink-2)}
-a.ref,button.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer}
+a.ref,button.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer;white-space:nowrap}
 button.ref{display:inline;padding:0;border:0;background:none;font:inherit;text-align:inherit}
 .delegation label{display:block;margin:20px 0 7px;font-size:13px;font-weight:700}
 .delegation input{width:100%;padding:11px 12px;border:1px solid var(--line-2);border-radius:9px;
@@ -279,7 +279,7 @@ button.ref{display:inline;padding:0;border:0;background:none;font:inherit;text-a
 .gridwrap{overflow-x:auto;margin:0 0 14px;-webkit-overflow-scrolling:touch}
 .grid{border-collapse:collapse;font-size:13.5px;line-height:1.6;min-width:100%}
 .grid th,.grid td{border:1px solid var(--line-2);padding:7px 9px;vertical-align:top;
-  text-align:left;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word}
+  text-align:left;white-space:pre-wrap;min-width:5em;overflow-wrap:break-word;word-break:keep-all}
 .grid th{background:var(--surface-2);font-weight:700}
 pre.tbl{margin:0;font-family:var(--font-mono);font-size:var(--tblsize,12px);
   line-height:1.5;white-space:pre;color:var(--ink)}

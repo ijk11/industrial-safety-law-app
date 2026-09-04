@@ -279,6 +279,11 @@ def _find_marker(text, start, token):
         prev = text[i - 1] if i else ""
         nxt = text[i + len(token):i + len(token) + 1]
         bad = prev.isdigit() or (token[-1] == "." and nxt.isdigit() and not text[i:].startswith(token + " "))
+        # 문장 끝의 '한다/된다/있다/없다'를 세 번째 목 '다.'로 자르지 않는다.
+        # '전원다. …'처럼 앞 목이 명사로 끝나고 바로 다음 목이 붙는 원문도
+        # 있으므로 한글 뒤라는 이유만으로 모든 목 기호를 제외하면 안 된다.
+        if token == "다." and prev and prev in "한된있없":
+            bad = True
         if not bad and not DATE_TAIL.search(text[max(0, i - 7):i]):
             return i
         i += 1

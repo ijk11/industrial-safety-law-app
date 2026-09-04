@@ -89,7 +89,7 @@ def collect():
 # 진짜 표 460건은 칸이 맞아야 하므로 손대지 않는다.
 V = "│┃"
 H = "─━"
-JOINT = "┌┬┐├┼┤└┴┘┏┳┓┣╋┫┗┻┛┠┨┯┷┰┸╂┿"
+JOINT = "┌┬┐├┼┤└┴┘┏┳┓┣╋┫┗┻┛┠┨┯┷┰┸╂┿┝┥╈┍┖┑┒┚┢┪╁┎╀┕┾┶╊"
 BOX = V + H + JOINT
 BOXSET = set(BOX)
 RE_BOX = re.compile("[" + re.escape(BOX) + "]")
@@ -177,7 +177,22 @@ def is_row(l):
 
 def blocks(text):
     out, cur, kind = [], [], None
-    for l in text.split(NL):
+    # API에는 제목 바로 뒤나 '나. 인력별 기준' 앞에 테두리가 붙기도 한다.
+    # 글과 테두리를 분리해야 괘선이 본문으로 접히거나 표의 첫 행이 어긋나지 않는다.
+    lines = []
+    for line in text.split(NL):
+        start = 0
+        for m in re.finditer(r"[\u2500-\u257f][\u2500-\u257f \t]*[\u2500-\u257f]", line):
+            if not is_border(m[0]):
+                continue
+            prefix = line[start:m.start()]
+            if prefix.strip():
+                lines.append(prefix)
+            lines.append((prefix if not prefix.strip() else "") + m[0])
+            start = m.end()
+        if start == 0 or line[start:].strip():
+            lines.append(line[start:])
+    for l in lines:
         k = "tbl" if (is_border(l) or is_row(l)) else "txt"
         if k != kind:
             if cur:
@@ -299,10 +314,11 @@ CITE_R = re.compile(r"^(?:조|항|호|목|절|장|편|관|류|종)(?![가-힣])|
 
 
 class Corpus:
-    """조문 본문 — 강제 줄바꿈이 없는 온전한 문장이라 띄어쓰기의 근거가 된다."""
+    """원문에서 한 줄에 붙어 쓰인 문맥을 줄 복원의 근거로 삼는다."""
 
     def __init__(self, text):
         self.text = text
+        self.words = set(re.findall(r"[가-힣]+", text))
 
     def decide(self, left, right):
         """끊긴 자리의 앞뒤 낱말을 떼어 내 조문에서 찾는다.
@@ -312,6 +328,10 @@ class Corpus:
         if not m or not n2:
             return None
         a, b = m.group()[-6:], n2.group()[:6]
+        # '면\n적', '근로\n자'처럼 짧아서 아래의 문맥 검사에서 빠지던 낱말.
+        # 조문에 완전한 낱말로 있고 띄어 쓴 반례가 없을 때에만 붙인다.
+        if len(m.group() + n2.group()) <= 3 and a + b in self.words and a + " " + b not in self.text:
+            return ""
         for i in range(len(a), 0, -1):
             for j in range(len(b), 0, -1):
                 if i + j < 4:
@@ -361,17 +381,20 @@ def join(frags, corpus=None):
         if not out:
             out = s
             continue
-        if MARK.match(f):
+        last = out.split(NL)[-1]
+        # 인쇄용 줄 끝의 '한/된/있/없'과 다음 줄의 '다.'는 문장 하나다.
+        # 목 기호를 먼저 검사하면 '한다.'가 영원히 두 줄로 남는다.
+        ending = last.endswith(("한", "된", "있", "없")) and re.match(r"^다[.)\]〉》」』,]", s)
+        if MARK.match(f) and not ending:
             out += NL + s
             continue
-        last = out.split(NL)[-1]
-        g = gap_for(last, s, corpus)
+        g = "" if ending else gap_for(last, s, corpus)
         out += (g + s) if g is not None else (NL + s)
     return out.strip()
 
 
 def build_corpus(docs):
-    """조문 본문 — 강제 줄바꿈이 없는 온전한 문장이라 띄어쓰기의 근거가 된다."""
+    """조문과 글 형식 별표의 끊기지 않은 문맥을 모은다. 표의 다른 칸은 섞지 않는다."""
     buf = []
     for d in docs:
         for a in d.get("조문", []):
@@ -381,6 +404,10 @@ def build_corpus(docs):
                 if h.get("내용"):
                     buf.append(h["내용"])
                 buf.extend(h.get("호", []) or [])
+        for b in d.get("별표", []):
+            kind, text = convert(b.get("내용", ""))
+            if kind == "글":
+                buf.append(text)
     return Corpus(NL.join(buf))
 
 
@@ -389,7 +416,10 @@ def split_table(text, corpus=None):
     out, seen = [], False
     for kind, lines in blocks(text):
         if kind == "txt":
-            s = NL.join(lines).strip(NL)
+            s = join(lines, corpus)
+            # 세로선이 남은 조각은 표의 일부일 수 있다. 반쪽 표를 만들지 않는다.
+            if RE_BOX.search(s):
+                return None
             if s.strip():
                 out.append(["t", s])
             continue
