@@ -27,8 +27,16 @@
   /* 물려도 다음에 열면 다시 묻는다 — 저장해 두고 영영 묻지 않으면 안 된다 */
   ok("물려도 남겨 두지 않는다", localStorage.getItem("osh:instOff") === null);
   ok("이미 설치했으면 아예 안 물음", typeof installed === "function" && !installed());
-  ok("법령 32건 적재", typeof DOCS !== "undefined" && DOCS.length === 32, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
-  ok("색인 2641건 내외", typeof RECS !== "undefined" && RECS.length > 2500, typeof RECS !== "undefined" ? RECS.length : "-");
+  ok("법령 66건 적재", typeof DOCS !== "undefined" && DOCS.length === 66, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
+  ok("색인 3300건 이상", typeof RECS !== "undefined" && RECS.length >= 3300, typeof RECS !== "undefined" ? RECS.length : "-");
+  const guides = DOCS.filter(d => d.군 === "지침");
+  ok("지침 17건을 단계 6으로 적재", guides.length === 17 &&
+     guides.every(d => d.약호 === "지침" && d.단계 === 6 && d.조문.length > 0), guides.length + "건");
+  ok("지침 17건을 목차 끝에 배치", DOCS.slice(-17).every(d => d.군 === "지침"));
+  ok("관리·보건 지침은 고시로 유지",
+     ["사업장 위험성평가에 관한 지침", "근로자 건강증진활동 지침", "사무실 공기관리 지침",
+      "영상표시단말기(VDT) 취급근로자 작업관리지침"].every(name =>
+       DOCS.some(d => d.법령명 === name && d.군 === "고시" && d.약호 === "고시" && d.단계 === 5)));
   for (const nm of ["중대재해 처벌 등에 관한 법률", "중대재해 처벌 등에 관한 법률 시행령",
                     "근로감독관 집무규정(산업안전보건)"]) {
     const d = DOCS.find(x => x.법령명 === nm);
@@ -39,6 +47,21 @@
   ok("낱말 검색 결과 있음", cards().length > 0, cards().length + "건 표시");
   ok("검색어 강조", !!$$("#v-search mark"));
   ok("첫 결과에 검색어 포함", /추락/.test(txt(cards()[0])), txt(cards()[0]).slice(0, 50));
+  {
+    const rule = hits.findIndex(r => DOCS[r.d].법령명 === "산업안전보건기준에 관한 규칙" && r.no === "제42조");
+    const guide = hits.findIndex(r => DOCS[r.d].군 === "지침");
+    ok("추락: 기준규칙 제42조가 지침보다 먼저", rule >= 0 && guide > rule,
+       "기준규칙 " + (rule + 1) + "위 · 첫 지침 " + (guide + 1) + "위");
+  }
+  /* 실제 고시와 지침의 '목적' 조문을 비교해 같은 검색 조건의 우선순위를 확인한다. */
+  await type("목적");
+  {
+    const notice = hits.findIndex(r => DOCS[r.d].법령명 === "건설공사 안전보건대장의 작성 등에 관한 고시" && r.no === "제1조");
+    const guide = hits.findIndex(r => DOCS[r.d].법령명 === "가설공사 표준안전 작업지침" && r.no === "제1조");
+    ok("같은 검색 조건에서 고시가 지침보다 2점 높고 먼저",
+       notice >= 0 && guide > notice && hits[notice]._score - hits[guide]._score === 2,
+       "고시 " + (notice + 1) + "위 · 지침 " + (guide + 1) + "위");
+  }
 
   await type("38");
   ok("번호 바로가기 → 법 제38조", /제38조/.test(txt(cards()[0])) && /안전조치/.test(txt(cards()[0])), txt(cards()[0]).slice(0, 40));
@@ -131,10 +154,34 @@
   chip.click(); await wait(400);
   ok("구분 필터 동작", hits.length > 0 && hits.length < beforeN, "전체 " + beforeN + "건 → 고시 " + hits.length + "건");
   [...document.querySelectorAll(".chip")].find(c => c.dataset.g === "전체").click(); await wait(300);
+  const guideChip = $$('.chip[data-g="지침"]');
+  ok("지침 필터 칩 표시", !!guideChip && txt(guideChip) === "지침");
+  await type("추락");
+  if (guideChip) guideChip.click();
+  await wait(400);
+  ok("지침 필터는 지침만 검색", hits.length > 0 && hits.every(r => DOCS[r.d].군 === "지침"), hits.length + "건");
+  $$('.chip[data-g="전체"]').click(); await wait(300);
 
   // 목차
   document.querySelector('nav.tabs button[data-tab="index"]').click(); await wait(300);
-  ok("목차: 법령 목록", document.querySelectorAll("#v-index .row").length >= 29, document.querySelectorAll("#v-index .row").length + "건");
+  ok("목차: 법령 목록 66건", document.querySelectorAll("#v-index .row").length === 66, document.querySelectorAll("#v-index .row").length + "건");
+  ok("목차: 지침 배지 17개", document.querySelectorAll("#v-index .badge.l6").length === 17 &&
+     [...document.querySelectorAll("#v-index .badge.l6")].every(b => txt(b) === "지침"));
+  {
+    const names = [...document.querySelectorAll("#v-index .row .t")].map(e => txt(e));
+    const certified = names.indexOf("위험기계·기구 안전인증 고시");
+    ok("목차: 위험기계·기구 고시 두 건을 나란히 배치", certified >= 0 &&
+       names[certified + 1] === "위험기계·기구 자율안전확인 고시");
+    const root = document.documentElement, theme = root.getAttribute("data-theme");
+    for (const mode of ["light", "dark"]) {
+      root.setAttribute("data-theme", mode);
+      const guide = $$("#v-index .badge.l6"), notice = $$("#v-index .badge.l5");
+      const color = guide ? getComputedStyle(guide).backgroundColor : "";
+      ok("목차: " + mode + " 지침 배지 색상", !!guide && !!notice && !!color &&
+         color !== "rgba(0, 0, 0, 0)" && color !== getComputedStyle(notice).backgroundColor, color);
+    }
+    if (theme === null) root.removeAttribute("data-theme"); else root.setAttribute("data-theme", theme);
+  }
   ok("목차: 시행일과 공포일",
      [...document.querySelectorAll("#v-index .row .s")].every(e => /시행 \d{4}-\d{2}-\d{2} · 공포 \d{4}-\d{2}-\d{2}/.test(txt(e))),
      txt(document.querySelector("#v-index .row .s")));
