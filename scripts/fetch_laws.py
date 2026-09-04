@@ -4,7 +4,7 @@
     python scripts/fetch_laws.py             # 전체 수집
     python scripts/fetch_laws.py --only 규칙  # 이름에 '규칙'이 들어간 것만
 
-산출물: data/laws/*.json, data/notices/*.json
+산출물: data/laws/*.json, data/notices/*.json, data/delegations.json
 공용 샘플 계정(OC=test)을 쓰므로, 본인 OC를 발급받았으면 환경변수 LAW_API_OC로 지정한다.
 """
 import json, os, re, sys, time, urllib.parse, urllib.request
@@ -380,16 +380,21 @@ def save(doc, subdir):
 
 def main():
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else None
+    laws_changed = False
     for name in LAWS:
         if only and only not in name:
             continue
         print("[법령]", name)
         save(parse_law(search("law", name)["법령일련번호"]), "laws")
+        laws_changed = True
     for name in NOTICES:
         if only and only not in name:
             continue
         print("[고시]", name)
         save(parse_admrul(search("admrul", name)["행정규칙일련번호"]), "notices")
+    if laws_changed:
+        from delegation import main as fetch_delegations
+        fetch_delegations()
 
 
 if __name__ == "__main__":

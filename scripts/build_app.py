@@ -429,6 +429,8 @@ def attach_penalty(docs, corpus):
 
 def slim(docs):
     """앱이 쓰지 않는 필드를 덜어내고, 별표를 읽기 좋은 꼴로 바꾼다."""
+    from delegation import attach
+    attach(docs)
     corpus = build_corpus(docs)
     hit, dropped = attach_penalty(docs, corpus)
     print("벌칙·과태료를 붙인 조문 %d개%s" % (

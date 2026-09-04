@@ -134,6 +134,93 @@
        ok2 ? DOCS[ok2.d].약호 + " " + ok2.no : "링크 없음");
   }
 
+  // 번호 없는 위임 — 실제 원문의 위치와 모든 목적지를 전수 확인한다.
+  {
+    let total = 0, valid = true, preserved = true;
+    for (const r of RECS.filter(r => r.kind === 0)) {
+      const a = DOCS[r.d].조문[r.i], links = a.위임 || [];
+      if (!links.length) continue;
+      const parts = { "본문": a.본문 || "" };
+      (a.항 || []).forEach((h, i) => {
+        parts["항" + i] = h.내용 || "";
+        (h.호 || []).forEach((t, j) => { parts["항" + i + "호" + j] = t; });
+      });
+      for (const x of links) {
+        total++;
+        const text = parts[x.부분] || "";
+        valid = valid && ["고용노동부령", "대통령령"].includes(text.slice(x.시작, x.끝)) &&
+          x.대상.length > 0 && x.대상.every(k => BYKEY.has(k) && !BYKEY.get(k).del);
+      }
+      for (const part of new Set(links.map(x => x.부분))) {
+        const box = document.createElement("div"); box.innerHTML = articleText(parts[part], r, part);
+        preserved = preserved && box.textContent === parts[part] &&
+          box.querySelectorAll(".delegated").length === links.filter(x => x.부분 === part).length &&
+          !box.querySelector("a button,button button");
+      }
+    }
+    ok("위임 문구 330곳 이상과 모든 목적지 유효", total >= 330 && valid, total + "곳");
+    ok("위임 링크 전체가 원문을 보존하고 중첩되지 않음", preserved);
+    const rec = (name, no) => RECS.find(r => r.kind === 0 && DOCS[r.d].법령명 === name && r.no === no);
+    const law = no => rec("산업안전보건법", no);
+    const destination = b => b && BYKEY.get(b.dataset.key);
+    const isRule = (r, no) => r && DOCS[r.d].법령명 === "산업안전보건법 시행규칙" && r.no === no;
+
+    openRec(law("제29조").key); await wait(150);
+    const education = [...document.querySelectorAll("#rbody .delegated")];
+    ok("교육 의무 세 항은 시행규칙 제26조로 연결", education.length === 3 &&
+       education.every(b => isRule(destination(b), "제26조")));
+    education[0]?.click(); await wait(200);
+    ok("고용노동부령을 누르면 실제 위임 조문 열림", isRule(cur, "제26조"));
+    history.back(); await wait(250);
+    ok("위임 조문에서 뒤로가면 원래 교육 의무 복귀", cur.key === law("제29조").key);
+    history.back(); await wait(250);
+
+    openRec(law("제36조").key); await wait(150);
+    const risk = [...document.querySelectorAll("#rbody .delegated")].map(destination);
+    ok("위험성평가의 각 항은 서로 다른 시행규칙 조문으로 연결", risk.length === 4 &&
+       ["제37조의2", "제37조의3", "제37조의4", "제37조"].every((no, i) => isRule(risk[i], no)));
+    history.back(); await wait(250);
+
+    openRec(law("제15조").key); await wait(150);
+    const manager = [...document.querySelectorAll("#rbody .delegated")];
+    ok("호 안의 부령과 항의 대통령령을 구별", manager.length === 2 &&
+       isRule(destination(manager[0]), "제9조") && destination(manager[1])?.no === "제14조" &&
+       DOCS[destination(manager[1]).d].법령명 === "산업안전보건법 시행령");
+    history.back(); await wait(250);
+
+    const severe = rec("중대재해 처벌 등에 관한 법률", "제8조");
+    openRec(severe.key); await wait(150);
+    const severeLink = $$("#rbody .delegated");
+    ok("중대재해법 위임은 같은 계열 시행령으로 연결", severeLink &&
+       DOCS[destination(severeLink)?.d]?.법령명 === "중대재해 처벌 등에 관한 법률 시행령");
+    history.back(); await wait(250);
+
+    openRec(law("제38조").key); await wait(150);
+    $$("#rbody [data-delegate]")?.click(); await wait(200);
+    ok("안전조치 부령은 위임받은 조문 목록을 열음", !!$$("#delegateq") &&
+       document.querySelectorAll("#delegatelist .drow").length > 300 &&
+       getComputedStyle($$("#rstar")).display === "none" && getComputedStyle($$("#rhl")).display === "none");
+    const dq = $$("#delegateq");
+    if (dq) { dq.value = "크레인"; dq.dispatchEvent(new Event("input", { bubbles: true })); }
+    const choices = [...document.querySelectorAll("#delegatelist .drow")];
+    ok("위임 조문 목록 안에서 본문 낱말로 검색", choices.length > 0 && choices.length < 100 &&
+       choices.every(b => destination(b).hay.includes("크레인")));
+    const chosen = choices[0]?.dataset.key;
+    choices[0]?.click(); await wait(200);
+    ok("목록에서 선택한 기준규칙 조문으로 이동", !!chosen && cur.key === chosen && !$("#rstar").hidden);
+    history.back(); await wait(250);
+    ok("뒤로가기로 위임 목록과 검색어 복원", $$("#delegateq")?.value === "크레인");
+    if ($$("#delegateq")) {
+      $$("#delegateq").value = "없는문구xyz";
+      $$("#delegateq").dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    ok("위임 목록 검색 결과 없음 안내", /찾는 조문이 없습니다/.test(txt($$("#delegatelist"))));
+    $$("#rback").click(); await wait(250);
+    ok("목록에서 뒤로가면 출발 조문 복귀", cur.key === law("제38조").key &&
+       !$$("#delegateq") && !!$$("#rbody [data-delegate]"));
+    history.back(); await wait(250);
+  }
+
   // 별표
   history.back(); await wait(300);
   await type("별표 3");

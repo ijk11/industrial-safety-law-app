@@ -222,6 +222,7 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 /* ---------- reader ---------- */
 .reader{position:fixed;inset:0;z-index:60;background:var(--ground);display:flex;flex-direction:column}
 .reader[hidden]{display:none}
+.iconbtn[hidden]{display:none}
 .rtop{display:flex;align-items:center;gap:4px;padding:calc(8px + env(safe-area-inset-top)) 8px 8px;border-bottom:1px solid var(--line);background:var(--ground)}
 .iconbtn{width:var(--tap);height:var(--tap);border-radius:10px;display:grid;place-items:center;color:var(--ink-2);flex:none}
 .iconbtn:hover{background:var(--surface-2)}
@@ -262,7 +263,15 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .pen li{margin:0 0 7px;padding-left:10px;border-left:2px solid var(--line-2)}
 .pen li:last-child{margin-bottom:0}
 .pen li .w{display:block;color:var(--ink-2)}
-a.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer}
+a.ref,button.ref{color:var(--accent);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;cursor:pointer}
+button.ref{display:inline;padding:0;border:0;background:none;font:inherit;text-align:inherit}
+.delegation label{display:block;margin:20px 0 7px;font-size:13px;font-weight:700}
+.delegation input{width:100%;padding:11px 12px;border:1px solid var(--line-2);border-radius:9px;
+  background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.delegation .dcount{margin:12px 0 6px;font-size:12px;color:var(--ink-3)}
+.delegation .drow{display:block;width:100%;padding:14px 2px;border:0;border-bottom:1px solid var(--line);
+  background:none;text-align:left;color:var(--ink);font-size:14px;line-height:1.6}
+.delegation .drow small{display:block;color:var(--ink-3);font-size:11.5px}
 .tblwrap{overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px}
 /* 표가 아닌 별표 — 괘선을 걷어냈으므로 본문처럼 접히게 둔다 */
 .tbltext{font-size:16px;line-height:1.8;white-space:pre-wrap;overflow-wrap:break-word}
@@ -1204,7 +1213,7 @@ async function checkUpdate(btn) {
 }
 
 /* ---------------- 리더 ---------------- */
-let cur = null;
+let cur = null, delegation = null;
 
 /* 앞에 붙은 법령 이름을 통째로 잡는다. 「」로 감싼 이름, "산안법" 처럼 줄인 이름,
    "법" "영" 처럼 한 글자로 부른 이름, "이 규칙" "같은 법" 처럼 가리키는 말이 모두 들어온다.
@@ -1290,11 +1299,82 @@ function linkify(html, docIdx) {
   });
 }
 
+/* 위임 자료는 원문 조각의 문자 위치를 지정한다. 번호 인용을 먼저 처리한 뒤
+   텍스트 노드만 감싸서 기존 링크·원문·HTML 이스케이프를 그대로 보존한다. */
+function articleText(text, r, part) {
+  const html = linkify(esc(text), r.d);
+  const links = (DOCS[r.d].조문[r.i].위임 || []).map((x, i) => ({ ...x, id: i }))
+    .filter(x => x.부분 === part);
+  if (!links.length) return html;
+  const box = document.createElement("template"); box.innerHTML = html;
+  const walker = document.createTreeWalker(box.content, NodeFilter.SHOW_TEXT);
+  const nodes = []; let node, offset = 0;
+  while ((node = walker.nextNode())) {
+    nodes.push({ node, offset }); offset += node.textContent.length;
+  }
+  for (const { node, offset } of nodes) {
+    const raw = node.textContent;
+    const here = links.filter(x => x.시작 >= offset && x.끝 <= offset + raw.length)
+      .sort((a, b) => a.시작 - b.시작);
+    if (!here.length || node.parentElement?.closest("a,button")) continue;
+    const frag = document.createDocumentFragment(); let at = 0;
+    for (const x of here) {
+      const begin = x.시작 - offset, end = x.끝 - offset;
+      if (begin < at) continue;
+      const targets = x.대상.map(k => BYKEY.get(k)).filter(Boolean);
+      if (!targets.length) continue;
+      frag.append(document.createTextNode(raw.slice(at, begin)));
+      const b = document.createElement("button"); b.className = "ref delegated";
+      b.textContent = raw.slice(begin, end);
+      if (targets.length === 1) {
+        b.dataset.key = targets[0].key;
+        b.title = DOCS[targets[0].d].법령명 + " " + targets[0].no + " " + targets[0].title;
+      } else {
+        b.dataset.delegate = x.id;
+        b.title = "위임받은 조문 " + targets.length + "개 보기";
+      }
+      b.setAttribute("aria-label", b.textContent + ": " + b.title);
+      frag.append(b); at = end;
+    }
+    frag.append(document.createTextNode(raw.slice(at))); node.replaceWith(frag);
+  }
+  return box.innerHTML;
+}
+
+function showDelegation(id, query = "") {
+  const link = cur && (DOCS[cur.d].조문[cur.i].위임 || [])[id];
+  if (!link) return;
+  delegation = id;
+  const targets = link.대상.map(k => BYKEY.get(k)).filter(Boolean);
+  $("#rno").textContent = cur.no + " · 위임받은 조문";
+  $("#rstar").hidden = true; $("#rhl").hidden = true;
+  $("#rbody").innerHTML = '<div class="rwrap delegation"><div class="rtitle">위임받은 조문</div>' +
+    '<p class="rchap">' + esc(DOCS[cur.d].법령명 + " " + cur.no) +
+    '의 내용을 구체적으로 정한 조문입니다. 읽을 조문을 선택하세요.</p>' +
+    '<label for="delegateq">이 목록에서 찾기</label><input id="delegateq" type="search" placeholder="조문 번호나 낱말" autocomplete="off">' +
+    '<div class="dcount" id="delegatecount" role="status"></div><div id="delegatelist"></div>' +
+    '<p class="note">국가법령정보센터의 위임 연결 자료를 기준으로 앱에 담긴 조문을 보여 줍니다.</p></div>';
+  const input = $("#delegateq"); input.value = query;
+  const render = () => {
+    const terms = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const found = targets.filter(r => terms.every(t => r.hay.includes(t)));
+    $("#delegatecount").textContent = found.length + "개 / 전체 " + targets.length + "개";
+    $("#delegatelist").innerHTML = found.map(r => '<button class="drow" data-key="' + r.key + '"><small>' +
+      esc(DOCS[r.d].법령명 + (r.chap ? " · " + r.chap : "")) + "</small>" +
+      esc(r.no + " " + r.title) + "</button>").join("") || '<p class="note">찾는 조문이 없습니다.</p>';
+    const st = history.state;
+    if (st && views[st.i]) views[st.i].dq = input.value;
+  };
+  input.oninput = render; render(); $("#rbody").scrollTop = 0;
+}
+
 /* 조문 화면을 그리기만 한다. 히스토리는 go() 가 맡는다. */
 function showRec(key) {
   const r = BYKEY.get(key);
   if (!r) return;
   cur = r;
+  delegation = null;
+  $("#rstar").hidden = false;
   const d = DOCS[r.d];
   $("#rwho").textContent = d.법령명;
   $("#rno").textContent = r.no + (r.title ? "  " + r.title : "");
@@ -1327,12 +1407,12 @@ function showRec(key) {
   } else {
     const a = d.조문[r.i];
     h += '<div class="art">';
-    if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + linkify(esc(a.본문), r.d) + "</p>";
+    if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + articleText(a.본문, r, "본문") + "</p>";
     (a.항 || []).forEach((hg, n) => {
       h += '<div class="hang">';
-      if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + linkify(esc(hg.내용), r.d) + "</p>";
+      if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + articleText(hg.내용, r, "항" + n) + "</p>";
       else if (hg.번호) h += '<p><span class="hn">' + esc(hg.번호) + "</span></p>";
-      (hg.호 || []).forEach(x => { h += '<div class="ho">' + linkify(esc(x), r.d) + "</div>"; });
+      (hg.호 || []).forEach((x, i) => { h += '<div class="ho">' + articleText(x, r, "항" + n + "호" + i) + "</div>"; });
       h += "</div>";
       /* 그 항을 어겼을 때 따라오는 것 — 다음 항으로 넘어가기 전에 붙인다 */
       h += penHTML(((a.벌 || {}).항 || {})[n + 1], d);
@@ -1445,7 +1525,7 @@ function syncSaveGo() {
 
 function hideReader() {
   $("#reader").hidden = true;
-  cur = null;
+  cur = null; delegation = null;
   document.body.style.overflow = "";
   /* 조문을 보고 나오면 첫 화면의 '최근 본 조문'이 바로 반영돼야 한다 */
   if (tab === "search" && !$("#q").value.trim()) renderSearch();
@@ -1457,7 +1537,8 @@ function hideReader() {
    홈 화면에 설치하면 브라우저 뒤로가기 버튼이 없어서, 왼쪽 끝을 쓸어넘기는
    제스처가 유일한 뒤로가기다. 그래서 온 길이 전부 히스토리에 남아 있어야 한다. */
 function snapshot() {
-  return { t: tab, doc: idxDoc, adv: advPage, key: (cur && !$("#reader").hidden) ? cur.key : null };
+  return { t: tab, doc: idxDoc, adv: advPage, key: (cur && !$("#reader").hidden) ? cur.key : null,
+    delegate: delegation, dq: $("#delegateq")?.value || "" };
 }
 
 /* 히스토리를 건드리지 않고 그 상태로 되돌린다. 안 바뀐 것은 다시 그리지 않는다
@@ -1470,7 +1551,10 @@ function applyView(v) {
   if (tabChanged) setTab(v.t);
   else if (docChanged && v.t === "index") renderIndex();
   else if (advChanged && v.t === "adv") renderAdv();
-  if (v.key) showRec(v.key);
+  if (v.key) {
+    showRec(v.key);
+    if (v.delegate != null) showDelegation(v.delegate, v.dq || "");
+  }
   else if (!$("#reader").hidden) hideReader();
 }
 
@@ -1637,6 +1721,8 @@ function start() {
   document.querySelectorAll("nav.tabs button").forEach(b =>
     b.onclick = () => { if (tab !== b.dataset.tab) go({ t: b.dataset.tab, doc: idxDoc, adv: advPage, key: null }); });
   document.addEventListener("click", e => {
+    const delegate = e.target.closest("[data-delegate]");
+    if (delegate && cur) { go({ ...snapshot(), delegate: +delegate.dataset.delegate, dq: "" }); return; }
     const k = e.target.closest("[data-key]");
     if (k) { openRec(k.dataset.key, e.target.closest(".ref") ? "ref" : "new"); return; }
     const g = e.target.closest("[data-tab-go]");
@@ -1695,7 +1781,7 @@ function start() {
   });
   addEventListener("keydown", e => {
     if (e.key === "Escape" && !$("#reader").hidden) history.back();
-    if (e.key === "/" && document.activeElement !== $("#q")) { e.preventDefault(); $("#q").focus(); }
+    if (e.key === "/" && !e.target.closest("input,textarea")) { e.preventDefault(); $("#q").focus(); }
   });
 
   syncChips();
