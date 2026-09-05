@@ -9,6 +9,22 @@
     await wait(500);
   };
   const cards = () => [...document.querySelectorAll("#v-search .card")];
+
+  /* 도중에 멈춰도 어디까지 갔는지는 남긴다. CI 에서는 화면을 볼 수 없어, 남긴
+     것이 없으면 "끝나지 않았습니다" 한 줄 말고는 실마리가 없다. */
+  const dump = why => {
+    if (document.getElementById("testout")) return;
+    const lines = out.concat(why ? ["FAIL " + why] : []);
+    const el = document.createElement("pre");
+    el.id = "testout";
+    el.textContent = lines.join("\n");
+    document.body.appendChild(el);
+    document.title = "TEST " + lines.filter(l => l.startsWith("FAIL")).length + " FAIL / " + lines.length;
+  };
+  const why = e => "시험이 " + out.length + "번째에서 멈췄다 :: " + e;
+  addEventListener("unhandledrejection", e => dump(why((e.reason && e.reason.message) || e.reason)));
+  addEventListener("error", e => dump(why(e.message)));
+  setTimeout(() => dump(why("제 시간에 끝나지 않았다")), 240000);
   const txt = el => (el ? el.textContent.replace(/\s+/g, " ").trim() : "");
 
   for (let i = 0; i < 600 && document.getElementById("boot"); i++) await wait(100);
@@ -741,9 +757,5 @@
     ok("고정폭 글꼴 적재", document.fonts.check('12px "OSH Mono"') || document.fonts.check('12px "Nanum Gothic Coding"'));
   } catch (e) { ok("고정폭 글꼴 적재", false, e.message); }
 
-  const el = document.createElement("pre");
-  el.id = "testout";
-  el.textContent = out.join("\n");
-  document.body.appendChild(el);
-  document.title = "TEST " + out.filter(l => l.startsWith("FAIL")).length + " FAIL / " + out.length;
+  dump(null);
 })();
