@@ -183,8 +183,10 @@ function draw(docs, now) {
   recent.forEach(function (k) { if (daily[k] > wide) wide = daily[k]; });
 
   var h = '<div class="big">' +
-    card(one.devices, "한 번이라도 연 기기", "dev", true) +
-    card(one.install, "홈 화면에 설치", "inst") +
+    /* 가장 믿을 만한 것을 앞에 둔다. 부풀기 쉬운 숫자가 앞자리를 차지하면
+       눈이 먼저 거기에 가 실제보다 많이 쓰인다고 여기게 된다. */
+    card(one.install, "홈 화면에 설치", "inst", true) +
+    card(one.devices, "한 번이라도 연 기기", "dev") +
     card(daily[today] || 0, "오늘 연 기기", "today") +
     '</div><div class="tip" id="bigtip" hidden></div>';
 

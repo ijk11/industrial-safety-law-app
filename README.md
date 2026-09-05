@@ -179,7 +179,7 @@ curl -s "https://firestore.googleapis.com/v1/projects/industrial-safety-law-app/
 
     https://ijk11.github.io/industrial-safety-law-app/stats.html
 
-깔려 있는 기기·설치 수·오늘 연 기기를 큰 숫자로 보이고, 날짜별 막대와 판별 기기 수를
+설치 수·깔려 있는 기기·오늘 연 기기를 큰 숫자로 보이고, 날짜별 막대와 판별 기기 수를
 잇는다. 홈 화면에 붙여 두면 앱처럼 열린다. 읽기만 하고 아무것도 쓰지 않으며,
 [`web/stats.html`](web/stats.html) 한 장이 전부다 — 앱의 오프라인 캐시에는 넣지 않는다.
 
