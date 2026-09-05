@@ -661,7 +661,8 @@
     await count();
     const first = sent;
     await count(); await count();
-    ok("처음 열면 보낸다", first >= 2, first + "번");
+    /* 갈아타는 중이면 판 칸은 건너뛴다. 날짜와 기기 둘은 언제나 간다 */
+    ok("처음 열면 보낸다", first === 2 || first === 3, first + "번");
     ok("같은 날 다시 열어도 보내지 않는다", sent === first, sent + "번");
     /* 날이 바뀌면 그날 칸만 하나 오른다. 기기 칸은 평생 한 번이라 다시 오르지 않는다 */
     localStorage.removeItem("osh:day");

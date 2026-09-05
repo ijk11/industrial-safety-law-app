@@ -1653,10 +1653,14 @@ function bump(doc) {
   }).then(r => r.ok).catch(() => false);   /* 못 보내도 그만이다. 앱이 하려던 일과 상관없다 */
 }
 
-/* 지금 돌고 있는 판. 새 판이 자리 잡으면 옛 캐시는 지워지므로 남는 것은 하나뿐이다 */
+/* 지금 돌고 있는 판. 새 판이 자리 잡으면 옛 캐시는 지워지므로 남는 것은 하나뿐이다.
+   갈아타는 동안에는 둘이 함께 있는데, 그때 아무거나 집으면 판이 오락가락해 같은
+   기기를 두 판에 걸쳐 센다. 하나로 정리된 뒤에 센다 — 다음에 열 때 잡으면 된다. */
 async function running() {
-  try { return (await caches.keys()).find(k => k.indexOf("osh-") === 0) || ""; }
-  catch (e) { return ""; }
+  try {
+    const k = (await caches.keys()).filter(x => x.indexOf("osh-") === 0);
+    return k.length === 1 ? k[0] : "";
+  } catch (e) { return ""; }
 }
 
 /* 만들면서 열어 보는 것과 CI 가 띄우는 브라우저는 사람이 아니다. 섞이면 숫자를
