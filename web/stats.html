@@ -42,12 +42,25 @@ button{font:inherit;border:1px solid var(--line-2);border-radius:9px;background:
   color:var(--ink-2);padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
 button:hover{background:var(--surface-2)}
 
-.big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 22px}
-.big div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 12px}
-.big .n{font-size:26px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;
-  letter-spacing:-.02em}
-.big .k{margin-top:3px;font-size:11.5px;color:var(--ink-3);line-height:1.45;word-break:keep-all}
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 10px}
+/* 숫자마다 한계가 다르다. 눌러야 나오게 두되, 눌러 볼 것이 있다는 표는 남긴다 */
+.big button{display:block;width:100%;text-align:left;background:var(--surface);
+  border:1px solid var(--line);border-radius:12px;padding:13px 12px;color:var(--ink)}
+.big button.on{border-color:var(--accent)}
+.big .n{display:block;font-size:26px;font-weight:700;line-height:1.15;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.big .k{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-3);
+  line-height:1.45;word-break:keep-all}
 .big .lead .n{color:var(--accent)}
+.big button.on .k{color:var(--accent)}
+.tip{margin:0 0 22px;padding:12px 14px;background:var(--surface-2);border-radius:11px;
+  font-size:12px;line-height:1.8;color:var(--ink-2)}
+.tip[hidden]{display:none}
+.tip b{color:var(--ink);font-weight:700}
+.i{width:19px;height:19px;padding:0;border-radius:50%;border:1px solid var(--line-2);
+  background:var(--surface);color:var(--ink-3);font-size:11px;font-weight:700;
+  line-height:1;vertical-align:2px;margin-left:5px}
+.i.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
 
 h2{margin:0 0 9px;font-size:13px;font-weight:700;color:var(--accent)}
 section{margin:0 0 22px}
@@ -109,9 +122,37 @@ function todayKST() {
   return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 }
 
-function card(n, k, lead) {
-  return '<div' + (lead ? ' class="lead"' : "") + '><div class="n">' +
-    n.toLocaleString() + '</div><div class="k">' + k + "</div></div>";
+/* 숫자마다 무엇을 세고 무엇을 못 세는지가 다르다. 하나로 뭉뚱그린 주석을 밑에 달면
+   어느 숫자를 두고 하는 말인지 흐려져, 결국 아무도 읽지 않는다. */
+var TIP = {
+  dev: "<b>이 기기에서 처음 열었을 때 한 번</b>만 셉니다. 브라우저마다 저장이 따로라, " +
+    "같은 휴대폰이어도 카카오톡 안에서 열고 사파리로 또 열면 2가 됩니다. " +
+    "사생활 보호 모드는 창을 닫으면 저장이 지워져, 다시 열면 새 기기로 셉니다. " +
+    "브라우저 자료를 지워도 마찬가지입니다. <b>사람 수보다 부풀기 쉽습니다.</b>",
+  inst: "<b>홈 화면 아이콘으로 처음 열었을 때</b> 한 번 셉니다. 안드로이드와 아이폰 모두 잡습니다. " +
+    "추가해 두기만 하고 열지 않으면 그때는 세지 않고, 처음 여는 때에 셉니다. " +
+    "지나가며 한 번 열어 본 사람도, 만들며 돌리는 검사용 브라우저도 여기에는 들어오지 않습니다. " +
+    "<b>세 숫자 가운데 가장 믿을 만합니다.</b>",
+  today: "한 기기가 하루에 여러 번 열어도 <b>한 번만</b> 셉니다. 날짜는 한국 시각으로 끊습니다. " +
+    "신호가 없어 보내지 못하면 적어 두지 않으므로, 그날 안에 다시 열면 그때 셉니다. " +
+    "브라우저를 갈아 열면 따로 셉니다.",
+  daily: "그날 앱을 연 <b>기기</b> 수입니다. 사람 수가 아니며, 같은 기기가 여러 날 열면 날마다 셉니다. " +
+    "만들면서 여는 것(localhost)과 CI 는 세지 않습니다. " +
+    "계수기를 붙인 2026-09-04 은 검사가 섞여 아예 빼 두었습니다.",
+  ver: "그 판을 <b>만난</b> 기기 수입니다. 갈아탄 기기뿐 아니라 <b>처음 온 기기도 들어갑니다.</b> " +
+    "맨 처음 여는 순간과 갈아타는 중에는 판이 정해지지 않아 건너뛰고 다음에 열 때 잡으므로, " +
+    "「한 번이라도 연 기기」보다 늘 조금 뒤처집니다."
+};
+
+function card(n, k, key, lead) {
+  return '<button data-tip="' + key + '" aria-expanded="false"' + (lead ? ' class="lead"' : "") +
+    '><span class="n">' + n.toLocaleString() + '</span><span class="k">' + k + "</span></button>";
+}
+
+/* 제목 옆의 물음표. 표를 눌러야 무엇을 못 세는지가 나온다 */
+function head(title, key) {
+  return "<h2>" + title + '<button class="i" data-tip="' + key + '" aria-expanded="false"' +
+    ' aria-label="이 숫자의 한계">i</button></h2><div class="tip" hidden>' + TIP[key] + "</div>";
 }
 
 /* 어느 것이 지금 판인지는 같은 자리에 놓인 sw.js 가 안다. 손으로 적어 두면 틀린다 */
@@ -142,11 +183,12 @@ function draw(docs, now) {
   recent.forEach(function (k) { if (daily[k] > wide) wide = daily[k]; });
 
   var h = '<div class="big">' +
-    card(one.devices, "한 번이라도 연 기기", true) +
-    card(one.install, "홈 화면에 설치") +
-    card(daily[today] || 0, "오늘 연 기기") + "</div>";
+    card(one.devices, "한 번이라도 연 기기", "dev", true) +
+    card(one.install, "홈 화면에 설치", "inst") +
+    card(daily[today] || 0, "오늘 연 기기", "today") +
+    '</div><div class="tip" id="bigtip" hidden></div>';
 
-  h += "<section><h2>날짜별로 앱을 연 기기</h2>";
+  h += "<section>" + head("날짜별로 앱을 연 기기", "daily");
   if (!recent.length) h += '<div class="msg">아직 쌓인 날이 없습니다.</div>';
   else {
     h += '<div class="rows">' + recent.map(function (k) {
@@ -170,25 +212,45 @@ function draw(docs, now) {
     return vers[a].at < vers[b].at ? 1 : vers[a].at > vers[b].at ? -1 : 0;
   });
   if (vk.length) {
-    h += "<section><h2>판마다 갈아탄 기기</h2><div class=\"rows\">" +
+    h += "<section>" + head("판마다 쓴 기기", "ver") + '<div class="rows">' +
       vk.map(function (k) {
         return '<div class="row"><div class="name">' + esc(k) +
           (k === now ? '<b class="tag">지금 판</b>' : "") + "</div>" +
           '<div class="v">' + vers[k].n + "</div></div>";
       }).join("") + "</div>" +
-      '<div class="sum">새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다. ' +
-      '새로 낸 판 아래 숫자가 차오르면 그만큼 갈아탄 것이다.</div></section>';
+      '<div class="sum">새 판이 퍼지는 동안 이미 깔려 있던 기기가 한 대씩 찍힌다.</div></section>';
   }
 
-  h += '<div class="note"><b>이 숫자의 한계</b><ul>' +
-    "<li>기기 안 저장에 기대므로, 브라우저 자료를 지우거나 다른 브라우저로 열면 새 기기로 센다</li>" +
-    "<li>사생활 보호 모드는 아예 세지 않는다 — 실제 이용자는 이보다 조금 더 많다</li>" +
-    "<li>만들면서 여는 것(localhost)과 CI 는 세지 않는다</li>" +
-    "<li>계수기를 붙인 2026-09-04 치는 검사가 섞여 믿을 수 없어 아예 빼 두었다</li>" +
-    "</ul>보내는 것은 숫자를 올려 달라는 말 한 마디뿐이다. 누가·어디서·무엇을 봤는지는 " +
-    "보내지 않고, 기기를 가리는 번호조차 서버로 가지 않는다.</div>";
+  h += '<div class="note">보내는 것은 <b>숫자를 올려 달라는 말 한 마디</b>뿐이다. ' +
+    "누가·어디서·무엇을 봤는지는 보내지 않고, 기기를 가리는 번호조차 서버로 가지 않는다. " +
+    "숫자마다 무엇을 못 세는지는 옆의 <b>i</b> 를 눌러 본다.</div>";
 
   $("#out").innerHTML = h;
+
+  /* 큰 숫자 셋은 설명 자리를 함께 쓴다. 셋을 동시에 펼치면 그래프가 화면 밖으로 밀린다 */
+  var bigtip = $("#bigtip");
+  document.querySelectorAll(".big [data-tip]").forEach(function (b) {
+    b.onclick = function () {
+      var same = b.classList.contains("on");
+      document.querySelectorAll(".big [data-tip]").forEach(function (x) {
+        x.classList.remove("on"); x.setAttribute("aria-expanded", "false");
+      });
+      bigtip.hidden = same;
+      if (!same) {
+        bigtip.innerHTML = TIP[b.dataset.tip];
+        b.classList.add("on"); b.setAttribute("aria-expanded", "true");
+      }
+    };
+  });
+  /* 제목 옆 물음표는 바로 아래 한 칸만 여닫는다 */
+  document.querySelectorAll("h2 .i").forEach(function (b) {
+    b.onclick = function () {
+      var box = b.parentNode.nextElementSibling;
+      box.hidden = !box.hidden;
+      b.classList.toggle("on", !box.hidden);
+      b.setAttribute("aria-expanded", String(!box.hidden));
+    };
+  });
 }
 
 function load() {
