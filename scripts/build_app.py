@@ -367,12 +367,41 @@ def _parse(lines, edges, counts=None):
             rows.append(_row(acc, shape))
     if not rows:
         return None
+    if loose:
+        carry_leading(rows)
     # 셀 안에 괘선이 남았다면 표 안에 표가 또 그려진 것이다. 손대지 않는다.
     for row in rows:
         for text, _ in row:
             if any(c in BOXSET for c in text):
                 return None
     return rows
+
+
+# 표 안의 목 기호. MARK 는 본문용이라 "1)" 이나 "가)" 를 잡지 못한다.
+ITEM = re.compile(r"^\s*(?:[가-힣]\s*[.)]|[0-9]+\s*[.)]|\([0-9]+\)|[①-⑮㉠-㉯]|[○◦●▪□■※])")
+
+
+NUM = re.compile(r"[\d,.·~\s%-]+")   # 금액·수치 칸. 앞 행으로 끌어올리지 않는다
+
+
+def carry_leading(rows):
+    """행이 갈린 뒤에도 왼쪽 이름 칸은 앞 행에서 이어진다.
+
+    값이 새로 나오면 새 행으로 가르는데, 그때 이름 칸의 접힌 뒷부분까지 새 행으로
+    끌려가 문장이 끊긴다 — 「노사협의체를 구」에서 잘리고 「성ㆍ운영하지 않은 경우를
+    포함한다)」가 다음 행에 남는다. 목 기호로 시작하지 않으면 앞 칸에 이어 붙인다."""
+    for i in range(1, len(rows)):
+        for j in range(min(len(rows[i]), len(rows[i - 1]))):
+            text, span = rows[i][j]
+            if not text.strip():
+                continue                      # 빈 칸은 지나친다
+            if ITEM.match(text.lstrip()) or NUM.fullmatch(text):
+                break                         # 새 항목이거나 값이다. 여기부터는 이 행의 것
+            prev, pspan = rows[i - 1][j]
+            if not prev.strip() or pspan != span:
+                break
+            rows[i - 1][j] = (prev + NL + text, pspan)
+            rows[i][j] = ("", span)
 
 
 def _row(acc, shape):
@@ -428,6 +457,17 @@ class Corpus:
                 spaced = x + " " + y in self.text
                 if stuck != spaced:
                     return "" if stuck else " "
+        # 마지막으로 한 글자씩 맞대어 본다. 표 안은 칸이 좁아 낱말 한가운데서 접히는
+        # 일이 잦은데, 위 검사는 넉 자를 요구해 '구/성하지' 같은 자리를 늘 놓친다.
+        # 조문에 그 두 글자가 낱말로 있고 띄어 쓴 반례가 없을 때에만 붙인다.
+        # 한쪽이 한 글자짜리 토막일 때만 — 낱말이 한가운데서 끊긴 자리다.
+        # 양쪽이 다 온전한 낱말이면 원래 띄어 쓴 것일 수 있어 손대지 않는다
+        # (「증상」+「판단」을 붙여 「증상판단」으로 만들면 안 된다).
+        if len(m.group()) > 1 and len(n2.group()) > 1:
+            return None
+        x, y = a[-1:], b[:1]
+        if x and y and x + y in self.words and x + " " + y not in self.text:
+            return ""
         return None
 
 
