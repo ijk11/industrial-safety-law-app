@@ -170,9 +170,13 @@ def at(line, chars):
     return out
 
 
+EDGE = V + JOINT
+
+
 def is_row(l):
+    """행으로 볼 줄. 병합된 칸을 가르느라 ├ 로 시작하는 줄도 행의 일부다."""
     s = l.strip()
-    return bool(s) and s[0] in V
+    return bool(s) and s[0] in EDGE
 
 
 def blocks(text):
@@ -185,6 +189,11 @@ def blocks(text):
         for m in re.finditer(r"[\u2500-\u257f][\u2500-\u257f \t]*[\u2500-\u257f]", line):
             if not is_border(m[0]):
                 continue
+            # 앞에 세로선이 이미 지나갔다면 제목 뒤에 붙은 테두리가 아니라, 병합된
+            # 칸을 가운데서 가르는 줄이다. 잘라 내면 앞은 반쪽 행이 되고 괘선 조각은
+            # 가로 위치를 잃는다 — 통째로 한 행으로 둔다.
+            if any(c in V for c in line[:m.start()]):
+                break
             prefix = line[start:m.start()]
             if prefix.strip():
                 lines.append(prefix)
@@ -208,8 +217,10 @@ def split_cells(l, edges, tol):
     """한 줄을 세로선 기준으로 자른다 → [(글, 시작칸, 끝칸)].
 
     원문이 칸을 넘겨 세로선이 밀린 표가 많다. 가까운 경계로 붙여 읽되,
-    순서가 뒤집히거나 tol 보다 멀면 손을 뗀다."""
-    pos = at(l, V)
+    순서가 뒤집히거나 tol 보다 멀면 손을 뗀다.
+
+    병합된 칸을 가르는 ├──┤ 는 그 자리가 곧 칸 경계이고 사이의 ─ 는 빈 칸이다."""
+    pos = at(l, EDGE)
     if len(pos) < 2:
         return None
     snap, prev = [], -1
@@ -221,14 +232,14 @@ def split_cells(l, edges, tol):
         prev = k
     cells, buf, start, seen = [], None, None, 0
     for ch in l:
-        if ch in V:
+        if ch in EDGE:
             k = snap[seen]
             seen += 1
             if buf is not None:
                 cells.append(("".join(buf), start, k))
             buf, start = [], k
             continue
-        if buf is not None:
+        if buf is not None and ch not in H:   # 칸을 가르는 ─ 는 글이 아니다
             buf.append(ch)
     # 마지막 세로선 뒤에 글이 남았다면 칸 밖으로 삐져나온 것이다. 어느 칸에 넣을지
     # 지어낼 수 없으니 손을 뗀다 — 원문 그대로 두면 적어도 글자를 잃지는 않는다.

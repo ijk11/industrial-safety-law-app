@@ -279,10 +279,15 @@
   ok("별표 검색", !!tbl, txt(cards()[0]).slice(0, 40));
   if (tbl) {
     tbl.click(); await wait(400);
+    /* 괘선을 풀어 진짜 표로 그린다. 고정폭 원문으로 남으면 폰에서 가로로 잘린다 */
+    const grid = $$("#rbody table.grid");
+    ok("별표를 표로 그림", !!grid && grid.rows.length > 3, grid ? grid.rows.length + "행" : "표 없음");
+    ok("표에 칸이 갈려 있음", !!grid && grid.rows[1] && grid.rows[1].cells.length > 1,
+       grid && grid.rows[1] ? grid.rows[1].cells.length + "칸" : "-");
+    /* 못 푼 덩이가 섞여 있으면 원문 그대로 두고, 글자 크기 단추를 함께 낸다 */
     const pre = $$("#rbody pre.tbl");
-    ok("별표 괘선표 표시", !!pre && /[┌│├─]/.test(pre.textContent), pre ? pre.textContent.slice(0, 30) : "-");
-    const rows = pre ? pre.textContent.split("\n").filter(l => /[│┌├]/.test(l)) : [];
-    ok("괘선 줄 다수", rows.length > 3, rows.length + "줄");
+    ok("못 푼 덩이는 원문 그대로", !pre || (/[┌│├─]/.test(pre.textContent) && !!$$("#rbody [data-z]")),
+       pre ? pre.textContent.slice(0, 24) : "섞인 것 없음");
     history.back(); await wait(300);
   }
 
