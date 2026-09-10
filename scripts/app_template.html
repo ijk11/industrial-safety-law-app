@@ -1256,6 +1256,41 @@ function swSettled(sw, ms) {
   });
 }
 
+/* 서버에 올라와 있는 판 */
+async function serverVer() {
+  try {
+    const t = await (await fetch("sw.js", { cache: "no-store" })).text();
+    return (t.match(/osh-[0-9a-f]+/) || [])[0] || "";
+  } catch (e) { return ""; }
+}
+
+/* 캐시에 옛 화면이 들어앉는 일이 있었다. 판 이름만 새것이고 담긴 것은 옛것이라
+   껐다 켜도 그대로다. 그 상태에서 「최신입니다」 하고 마는 것은 거짓말이다. */
+async function cacheStale() {
+  try {
+    const keys = await caches.keys();
+    const k = keys.find(x => x.indexOf("osh-") === 0);
+    if (!k) return false;
+    const hit = await (await caches.open(k)).match("index.html", { ignoreSearch: true });
+    if (!hit) return false;
+    const [mine, live] = await Promise.all([
+      hit.text(), fetch("index.html", { cache: "no-store" }).then(r => r.text())]);
+    return mine.length !== live.length;
+  } catch (e) { return false; }
+}
+
+/* 마지막 수단 — 받아 둔 것을 통째로 버리고 처음부터 다시 받는다.
+   저장한 조문과 최근 본 조문은 따로 있어 지워지지 않는다. */
+async function wipeAndReload() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.unregister();
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  } catch (e) {}
+  location.reload();
+}
+
 async function checkUpdate(btn) {
   if (!navigator.onLine) { toast("인터넷에 연결되어 있지 않습니다. 연결한 뒤 다시 눌러 주세요."); return; }
   btn.disabled = true;
@@ -1278,10 +1313,25 @@ async function checkUpdate(btn) {
   }
   await swSettled(reg.installing || reg.waiting, 20000);
   takeUpdate(reg);
+
+  /* 눌렀으면 바꿔 주는 것이 맞다. 「닫았다 열면 바뀝니다」는 사람이 할 일을 넘기는 말이다 */
+  const server = await serverVer();
+  const run = window.__runVer ? "osh-" + window.__runVer : "";
+  if (gotNew || (server && run && server !== run)) {
+    btn.textContent = "새 판으로 바꾸는 중…";
+    toast("새 판을 받았습니다. 바로 바꿉니다.", 4000);
+    setTimeout(() => location.reload(), 600);
+    return;
+  }
+  if (await cacheStale()) {
+    btn.textContent = "다시 받는 중…";
+    toast("받아 둔 화면이 옛것이라 처음부터 다시 받습니다.", 6000);
+    wipeAndReload();
+    return;
+  }
   btn.disabled = false;
   btn.textContent = "앱 업데이트 확인";
-  if (gotNew) toast("새 법령 판을 받았습니다. 앱을 닫았다 열면 바뀝니다.", 7000);
-  else toast("최신입니다. 새로 올라온 판이 없습니다.");
+  toast("최신입니다. 새로 올라온 판이 없습니다.");
 }
 
 /* ---------------- 리더 ---------------- */
