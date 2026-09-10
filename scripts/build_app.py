@@ -341,13 +341,14 @@ def _parse(lines, edges, counts=None):
         groups.append(cur)
     if not groups:
         return None
-    # 안쪽 칸막이가 하나도 없는 표는 줄 하나가 곧 행이다. 스무 줄을 한 행으로 묶으면
-    # 위험물질과 기준량이 짝을 잃어, 표로 그린 것이 원문보다 읽기 나빠진다.
-    if sum(1 for l in lines[1:-1] if is_border(l)) <= 1:
-        groups = [[l] for g in groups for l in g]
+    # 안쪽 칸막이가 없는 표는 어디서 행이 갈리는지 원문이 말해 주지 않는다. 통째로
+    # 한 행으로 묶으면 위험물질과 기준량이 짝을 잃고, 줄마다 자르면 한 위반행위가
+    # 다섯 줄로 흩어진다. 오른쪽 끝 칸이 채워진 줄에서 새 행이 시작된다고 본다 —
+    # 이어지는 줄은 왼쪽 글만 넘어오고 값 칸은 비어 있다.
+    loose = sum(1 for l in lines[1:-1] if is_border(l)) <= 1
 
     rows = []
-    for g in groups:
+    for gi, g in enumerate(groups):
         shape, acc = None, None
         for l in g:
             cs = split_cells(l, edges, tol, counts)
@@ -356,8 +357,8 @@ def _parse(lines, edges, counts=None):
             sig = [(a, b) for _, a, b in cs]
             if shape is None:
                 shape, acc = sig, [[t] for t, _, _ in cs]
-            elif sig != shape:
-                rows.append(_row(acc, shape))     # 칸 모양이 바뀌면 새 행
+            elif sig != shape or (loose and gi and cs[-1][0].strip()):
+                rows.append(_row(acc, shape))     # 칸 모양이 바뀌거나 값이 새로 나오면 새 행
                 shape, acc = sig, [[t] for t, _, _ in cs]
             else:
                 for i, (t, _, _) in enumerate(cs):
