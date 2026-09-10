@@ -91,7 +91,7 @@ TAIL_EXTRA = """<style>
 <script>
 if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
-    /* 새 판을 받아 두었다는 알림은 앱 쪽 watchUpdate() 가 팝업으로 맡는다.
+    /* 새 판을 받으면 앱 쪽 watchUpdate() 가 묻지 않고 갈아탄다.
        잠깐 뜨는 토스트로만 알리면 놓쳐, 새 판을 두고도 옛 판을 계속 쓰게 된다. */
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });

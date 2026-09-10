@@ -710,26 +710,16 @@
   ok("기기를 가리는 번호를 보내지 않는다",
      !/deviceId|uuid|randomUUID/.test(count.toString() + bump.toString()));
 
-  // 새 판 알림 — 판마다 한 번씩만 물어야 한다
-  {
-    const $u = () => $$("#update");
-    localStorage.removeItem("osh:updSeen");
-    const fake = { waiting: { postMessage: () => {} } };
-    const ver = await pendingVersion();
-    ok("기다리는 판의 이름을 읽음", /^osh-|^new$/.test(ver), ver);
-    await showUpdate(fake); await wait(300);
-    ok("새 판이면 알린다", !$u().hidden);
-    ok("껐다 켜라고 일러 준다", /껐다 켜면/.test(txt($u())), txt($$("#update p")).slice(0, 30));
-    ok("바로 바꿀 길도 준다", !!$$("#updgo"));
-    $$("#updno").click(); await wait(250);
-    ok("물리면 닫힌다", $u().hidden);
-    await showUpdate(fake); await wait(300);
-    ok("같은 판은 다시 묻지 않는다", $u().hidden);
-    store.set("updSeen", "osh-지난판");
-    await showUpdate(fake); await wait(300);
-    ok("다음 판이 나오면 다시 묻는다", !$u().hidden);
-    $$("#updno").click(); await wait(250);
-  }
+  // 새 판 — 묻지 않고 조용히 갈아탄다
+  ok("새 판 알림 팝업은 없앴다", !$$("#update") && typeof showUpdate === "undefined");
+  /* 받아 두기만 하고 기다리면 앱을 완전히 닫을 때까지 옛 판을 쓴다.
+     다만 화면은 건드리지 않는다 — 읽던 자리를 잃으면 그것이 더 나쁘다. */
+  ok("묻지 않고 갈아탄다", typeof takeUpdate === "function" &&
+     /skipWaiting/.test(takeUpdate.toString()) && !/reload/.test(takeUpdate.toString()));
+  ok("갈아타면 그 판을 센다", /controllerchange/.test(watchUpdate.toString()) &&
+     /count/.test(watchUpdate.toString()));
+  ok("앱 업데이트 확인은 그대로 둔다", typeof checkUpdate === "function" &&
+     !/새 판으로 바꾸기/.test(checkUpdate.toString()));
 
   // 조문 공유 — 링크 없이 글만, 벌칙·과태료는 고르게
   await type("법 42"); cards()[0].click(); await wait(500);

@@ -6,7 +6,7 @@
 원문 전체를 gzip+base64로 파일 안에 넣고, 앱이 열릴 때 기기 안에서 펼친다.
 산출물: dist/산안법-조문찾기.html
 """
-import base64, gzip, io, json, os, re, sys, unicodedata
+import base64, collections, gzip, io, json, os, re, sys, unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -213,7 +213,27 @@ def blocks(text):
     return out
 
 
-def split_cells(l, edges, tol):
+TOPLEFT = "┌┏┍┎"
+
+
+def tables(lines):
+    """붙어 있는 표들을 하나씩 떼어 낸다.
+
+    빈 줄 없이 표가 잇달아 오면 한 덩이로 잡히는데, 폭이 서로 다르면 열 경계가
+    뒤섞여 어느 쪽도 풀지 못한다. 왼쪽 위 모서리가 나오면 새 표가 시작된 것이다."""
+    out, cur = [], []
+    for l in lines:
+        s = l.strip()
+        if cur and s[:1] in TOPLEFT and is_border(l):
+            out.append(cur)
+            cur = []
+        cur.append(l)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def split_cells(l, edges, tol, counts=None):
     """한 줄을 세로선 기준으로 자른다 → [(글, 시작칸, 끝칸)].
 
     원문이 칸을 넘겨 세로선이 밀린 표가 많다. 가까운 경계로 붙여 읽되,
@@ -223,13 +243,21 @@ def split_cells(l, edges, tol):
     pos = at(l, EDGE)
     if len(pos) < 2:
         return None
-    snap, prev = [], -1
-    for p in pos:
-        k = min(range(len(edges)), key=lambda j: abs(edges[j] - p))
-        if abs(edges[k] - p) > tol or k <= prev:
-            return None
-        snap.append(k)
-        prev = k
+    if len(pos) == len(edges):
+        # 세로선 수가 열 경계 수와 같으면 차례가 곧 답이다. 글이 칸을 넘쳐 선이
+        # 한참 밀린 줄도 이 길로 제대로 읽힌다 — 자리를 재지 않고 차례로 맞춘다.
+        snap = list(range(len(edges)))
+    else:
+        snap, prev = [], -1
+        for p in pos:
+            # 같은 거리에 경계가 둘이면 여러 줄이 쓴 쪽을 택한다. 원문에서 한 칸
+            # 밀린 줄이 만든 가짜 경계보다, 테두리마다 나오는 진짜 경계가 옳다.
+            k = min(range(len(edges)),
+                    key=lambda j: (abs(edges[j] - p), -(counts or {}).get(edges[j], 0)))
+            if abs(edges[k] - p) > tol or k <= prev:
+                return None
+            snap.append(k)
+            prev = k
     cells, buf, start, seen = [], None, None, 0
     for ch in l:
         if ch in EDGE:
@@ -241,19 +269,58 @@ def split_cells(l, edges, tol):
             continue
         if buf is not None and ch not in H:   # 칸을 가르는 ─ 는 글이 아니다
             buf.append(ch)
-    # 마지막 세로선 뒤에 글이 남았다면 칸 밖으로 삐져나온 것이다. 어느 칸에 넣을지
-    # 지어낼 수 없으니 손을 뗀다 — 원문 그대로 두면 적어도 글자를 잃지는 않는다.
-    if buf is not None and "".join(buf).strip():
+    # 오른쪽 테두리가 빠진 줄이 흔하다 — 글이 칸을 넘치면 원문이 선을 못 긋는다.
+    # 그때 마지막 칸은 표의 오른쪽 끝까지로 본다. 왼쪽 자리는 세로선이 말해 주므로
+    # 지어내는 것이 아니고, 버리면 글자가 통째로 사라진다.
+    if not cells:
         return None
-    return cells or None
+    rest = "".join(buf) if buf is not None else ""
+    if rest.strip():
+        if start is None or start >= len(edges) - 1:
+            return None
+        cells.append((rest, start, len(edges) - 1))
+    elif cells[-1][2] < len(edges) - 1:
+        # 오른쪽에서 짧게 끝난 줄이다. 마지막 칸을 표의 오른쪽 끝까지 늘린다.
+        t, a, _ = cells[-1]
+        cells[-1] = (t, a, len(edges) - 1)
+    return cells
+
+
+SHIFT = 2   # 원문에서 칸이 밀리는 폭. 이보다 가까우면 같은 경계로 본다
+
+
+def merge_edges(counts):
+    """가까운 경계를 한 자리로 묶는다.
+
+    같은 표인데 줄마다 세로선이 한두 칸씩 밀려 있는 원문이 많다. 그대로 두면
+    한 경계가 둘로 잡혀 어느 칸에도 맞지 않게 되고, 표 전체를 놓친다.
+    묶은 자리는 가장 여러 줄이 쓴 위치로 정한다 — 다수가 옳다."""
+    groups = []
+    for p in sorted(counts):
+        if groups and p - groups[-1][-1] <= SHIFT:
+            groups[-1].append(p)
+        else:
+            groups.append([p])
+    return [max(g, key=lambda x: (counts[x], -x)) for g in groups]
 
 
 def parse(lines):
-    """[[(글, colspan), ...], ...] 로. 못 풀면 None."""
+    """[[(글, colspan), ...], ...] 로. 못 풀면 None.
+
+    먼저 원문의 경계를 그대로 두고 푼다. 그래야 폭이 두 칸뿐인 좁은 열을 잃지 않는다.
+    못 풀었을 때만 가까운 경계를 묶어 다시 본다 — 밀린 줄 때문에 놓치는 표가 많다."""
     borders = [l for l in lines if is_border(l)]
     if not borders:
         return None
-    edges = sorted({p for l in borders for p in at(l, JOINT)})
+    counts = collections.Counter(p for l in borders for p in at(l, JOINT))
+    got = _parse(lines, sorted(counts), counts)
+    if got is not None:
+        return got
+    merged = merge_edges(counts)
+    return _parse(lines, merged, counts) if len(merged) != len(counts) else None
+
+
+def _parse(lines, edges, counts=None):
     if len(edges) < 3:
         return None
     gap = min(b - a for a, b in zip(edges, edges[1:]))
@@ -274,19 +341,24 @@ def parse(lines):
         groups.append(cur)
     if not groups:
         return None
+    # 안쪽 칸막이가 없는 표는 어디서 행이 갈리는지 원문이 말해 주지 않는다. 통째로
+    # 한 행으로 묶으면 위험물질과 기준량이 짝을 잃고, 줄마다 자르면 한 위반행위가
+    # 다섯 줄로 흩어진다. 오른쪽 끝 칸이 채워진 줄에서 새 행이 시작된다고 본다 —
+    # 이어지는 줄은 왼쪽 글만 넘어오고 값 칸은 비어 있다.
+    loose = sum(1 for l in lines[1:-1] if is_border(l)) <= 1
 
     rows = []
-    for g in groups:
+    for gi, g in enumerate(groups):
         shape, acc = None, None
         for l in g:
-            cs = split_cells(l, edges, tol)
+            cs = split_cells(l, edges, tol, counts)
             if cs is None or cs[0][1] != 0 or cs[-1][2] != len(edges) - 1:
                 return None
             sig = [(a, b) for _, a, b in cs]
             if shape is None:
                 shape, acc = sig, [[t] for t, _, _ in cs]
-            elif sig != shape:
-                rows.append(_row(acc, shape))     # 칸 모양이 바뀌면 새 행
+            elif sig != shape or (loose and gi and cs[-1][0].strip()):
+                rows.append(_row(acc, shape))     # 칸 모양이 바뀌거나 값이 새로 나오면 새 행
                 shape, acc = sig, [[t] for t, _, _ in cs]
             else:
                 for i, (t, _, _) in enumerate(cs):
@@ -453,13 +525,14 @@ def split_table(text, corpus=None):
                 if s.strip():
                     out.append(["t", s])
                 continue
-        rows = parse(lines)
-        if rows is None:
-            out.append(["p", NL.join(lines)])
-            continue
-        seen = True
-        rows = [[(join(c.split(NL), corpus), n) for c, n in row] for row in rows]
-        out.append(["r", [[c if n == 1 else [c, n] for c, n in row] for row in rows]])
+        for sub_lines in tables(lines):
+            rows = parse(sub_lines)
+            if rows is None:
+                out.append(["p", NL.join(sub_lines)])
+                continue
+            seen = True
+            rows = [[(join(c.split(NL), corpus), n) for c, n in row] for row in rows]
+            out.append(["r", [[c if n == 1 else [c, n] for c, n in row] for row in rows]])
     return out if seen else None
 
 
