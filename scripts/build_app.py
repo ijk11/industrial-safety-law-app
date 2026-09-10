@@ -269,11 +269,21 @@ def split_cells(l, edges, tol, counts=None):
             continue
         if buf is not None and ch not in H:   # 칸을 가르는 ─ 는 글이 아니다
             buf.append(ch)
-    # 마지막 세로선 뒤에 글이 남았다면 칸 밖으로 삐져나온 것이다. 어느 칸에 넣을지
-    # 지어낼 수 없으니 손을 뗀다 — 원문 그대로 두면 적어도 글자를 잃지는 않는다.
-    if buf is not None and "".join(buf).strip():
+    # 오른쪽 테두리가 빠진 줄이 흔하다 — 글이 칸을 넘치면 원문이 선을 못 긋는다.
+    # 그때 마지막 칸은 표의 오른쪽 끝까지로 본다. 왼쪽 자리는 세로선이 말해 주므로
+    # 지어내는 것이 아니고, 버리면 글자가 통째로 사라진다.
+    if not cells:
         return None
-    return cells or None
+    rest = "".join(buf) if buf is not None else ""
+    if rest.strip():
+        if start is None or start >= len(edges) - 1:
+            return None
+        cells.append((rest, start, len(edges) - 1))
+    elif cells[-1][2] < len(edges) - 1:
+        # 오른쪽에서 짧게 끝난 줄이다. 마지막 칸을 표의 오른쪽 끝까지 늘린다.
+        t, a, _ = cells[-1]
+        cells[-1] = (t, a, len(edges) - 1)
+    return cells
 
 
 SHIFT = 2   # 원문에서 칸이 밀리는 폭. 이보다 가까우면 같은 경계로 본다
