@@ -185,6 +185,25 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .iconbtn.on{color:var(--accent)}
 .rtop .who{flex:1;min-width:0;text-align:center}
 .rtop .who .a{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 이전·다음을 여러 번 누른 뒤 한 번에 빠져나오는 길. 법령명이 곧 나가는 문이다 */
+.rtop .who .exit{width:100%;padding:0;border:0;background:none;font:inherit;
+  color:var(--ink-3);text-decoration:underline dotted;text-underline-offset:3px}
+.rtop .who .exit:hover{color:var(--accent)}
+
+/* 조문 안에서 낱말 찾기 */
+.findbar{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line);
+  background:var(--surface)}
+.findbar[hidden]{display:none}
+.findbar input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line-2);border-radius:9px;
+  background:var(--ground);color:var(--ink);font:inherit;font-size:14px}
+.findbar .fn{flex:none;padding:0 4px;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.findbar .iconbtn{width:36px;height:36px}
+mark.cur{background:var(--accent);color:var(--accent-ink)}
+/* 좁은 화면에서는 단추 다섯이 제목을 밀어낸다. 단추를 줄여 이름을 살린다 */
+@media (max-width:370px){
+  .rtop{gap:0;padding-left:4px;padding-right:4px}
+  .rtop .iconbtn{width:37px}
+}
 .rtop .who .b{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rbody{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:18px 16px calc(24px + env(safe-area-inset-bottom));
@@ -202,6 +221,25 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .hang{margin:0 0 14px}
 .hang .hn{font-weight:700;color:var(--accent);margin-right:3px}
 .ho{margin:7px 0 0 14px;padding-left:2px;color:var(--ink-2);font-size:15px;line-height:1.72;white-space:pre-line}
+/* 목의 층을 들여쓴다 — 1. → 가. → 1) → 가). 긴 조문에서 어디에 걸린 말인지가
+   눈에 잡힌다. 접힌 줄은 기호 밑이 아니라 글 밑에 오도록 매단다. */
+.ho.d1{margin-left:14px}
+.ho.d2{margin-left:28px}
+.ho.d3{margin-left:42px}
+.ho.d4{margin-left:56px}
+.ho.d1,.ho.d2,.ho.d3,.ho.d4{padding-left:1.5em;text-indent:-1.5em}
+.ho + .ho{margin-top:4px}
+
+/* 이어 보기 — 법령 전체를 끊김 없이 훑는다 */
+.flow{margin:0 0 10px}
+.fart{padding:16px 0 4px;border-top:1px solid var(--line)}
+.fart:first-child{border-top:0}
+.fh{display:block;width:100%;padding:0 0 4px;background:none;border:0;text-align:left;color:var(--ink);
+  font-family:var(--font-serif);font-size:17px;font-weight:700;line-height:1.45}
+.fh:hover{color:var(--accent)}
+.fh .fn{color:var(--accent)}
+.fart .art{font-size:15.5px}
+.fart .art p{margin:0 0 9px}
 .del{color:var(--ink-3)}
 /* 제12장 벌칙·과태료 — 조문을 읽다 바로 눈에 들되, 본문과 섞이지는 않아야 한다 */
 .pen{margin:10px 0 14px;padding:9px 12px;border-radius:9px;background:var(--surface-2);
@@ -390,7 +428,10 @@ nav.tabs svg{width:20px;height:20px}
     <button class="iconbtn" id="rback" aria-label="뒤로">
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <div class="who"><div class="a" id="rwho"></div><div class="b" id="rno"></div></div>
+    <div class="who"><button class="a exit" id="rwho" title="목록으로 나가기"></button><div class="b" id="rno"></div></div>
+    <button class="iconbtn" id="rfind" aria-label="이 조문에서 찾기" title="이 조문에서 찾기">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    </button>
     <button class="iconbtn" id="rshare" aria-label="공유" title="공유">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/></svg>
     </button>
@@ -399,6 +440,19 @@ nav.tabs svg{width:20px;height:20px}
     </button>
     <button class="iconbtn" id="rstar" aria-label="저장">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3.8h12v16.4l-6-4.2-6 4.2z"/></svg>
+    </button>
+  </div>
+  <div class="findbar" id="findbar" hidden>
+    <input id="findq" type="search" placeholder="이 조문에서 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="이 조문에서 찾기">
+    <span class="fn" id="findn"></span>
+    <button class="iconbtn" id="findprev" aria-label="이전 찾기">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+    <button class="iconbtn" id="findnext" aria-label="다음 찾기">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <button class="iconbtn" id="findx" aria-label="찾기 닫기">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
     </button>
   </div>
   <div class="rbody" id="rbody"></div>
@@ -661,6 +715,62 @@ function paintHL() {
 }
 
 /* 형광펜을 걷어낸다. 조문을 옮겨 다녀도 다시 칠해지지 않도록 낱말까지 버린다. */
+/* ---------------- 한 번에 빠져나오기 ----------------
+   이전·다음을 열 번 누르면 뒤로가기도 열 번 눌러야 목록으로 돌아간다.
+   조문을 짚어 가며 훑는 일이 잦아 이것이 성가시다. 이 조문 줄기에 들어오기
+   직전 자리까지 히스토리를 한 번에 되짚는다 — 검색에서 왔으면 검색 결과로,
+   목차에서 왔으면 그 법령 목차로 돌아간다. */
+function exitReader() {
+  const st = history.state;
+  const at = st && typeof st.i === "number" ? st.i : 0;
+  let back = 0;
+  while (at - back > 0 && views[at - back] && views[at - back].key) back++;
+  if (back > 0) history.go(-back);
+  else hideReader();
+}
+
+/* ---------------- 조문 안에서 찾기 ----------------
+   긴 조문은 화면 몇 개가 넘어간다. 법령 전체 검색과는 쓰임이 다르다 —
+   지금 보고 있는 조문 안에서 낱말이 어디에 나오는지만 짚어 준다. */
+let findQ = "", findAt = 0;
+
+function findMarks() {
+  return [...$("#rbody").querySelectorAll("mark")];
+}
+
+function showFind(i) {
+  const ms = findMarks();
+  if (!ms.length) { $("#findn").textContent = findQ ? "없음" : ""; return; }
+  findAt = (i + ms.length) % ms.length;
+  ms.forEach(m => m.classList.remove("cur"));
+  const cur = ms[findAt];
+  cur.classList.add("cur");
+  cur.scrollIntoView({ block: "center" });
+  $("#findn").textContent = (findAt + 1) + "/" + ms.length;
+}
+
+function runFind(q) {
+  findQ = q.trim();
+  clearHL();
+  if (!findQ) { $("#findn").textContent = ""; return; }
+  hlToks = [findQ];
+  paintHL();
+  showFind(0);
+}
+
+function openFind() {
+  $("#findbar").hidden = false;
+  $("#findq").value = findQ;
+  $("#findq").focus();
+  $("#findq").select();
+}
+
+function closeFind() {
+  $("#findbar").hidden = true;
+  $("#findq").value = "";
+  runFind("");
+}
+
 function clearHL() {
   hlToks = [];
   const box = $("#rbody");
@@ -852,6 +962,24 @@ function cardHTML(r, toks) {
 }
 
 /* ---------------- 목차 ---------------- */
+/* 조문을 하나씩 눌러 보는 것과, 법령을 통째로 훑는 것은 쓰임이 다르다.
+   690 개 조문을 한 번에 그려도 15ms 남짓이라 나눠 그릴 이유가 없다. */
+let idxFlow = store.get("idxFlow", false);
+
+function flowHTML(d) {
+  let chap = null, h = '<div class="flow">';
+  (d.조문 || []).forEach((a, ai) => {
+    const c = (a.장 || "") + (a.절 ? " " + a.절 : "");
+    if (c !== chap) { chap = c; if (c) h += '<div class="chap">' + esc(c) + "</div>"; }
+    const r = BYKEY.get(idxDoc + ":j:" + ai);
+    h += '<section class="fart"><button class="fh" data-key="' + idxDoc + ":j:" + ai + '">' +
+      '<span class="fn">' + esc(a.조번호) + "</span>" + (a.제목 ? " " + esc(a.제목) : "") + "</button>";
+    h += r ? artBody(r, false) : "";
+    h += "</section>";
+  });
+  return h + "</div>";
+}
+
 function renderIndex() {
   const v = $("#v-index");
   if (idxDoc === null) {
@@ -865,6 +993,13 @@ function renderIndex() {
   }
   const d = DOCS[idxDoc];
   let h = '<div class="crumb"><button id="idxback">법령 목록</button><span>›</span><span>' + esc(d.법령명) + "</span></div>";
+  h += '<div class="seg"><button data-idx="grid"' + (idxFlow ? "" : ' class="on"') + ">조문 목록</button>" +
+       '<button data-idx="flow"' + (idxFlow ? ' class="on"' : "") + ">이어 보기</button></div>";
+  if (idxFlow) {
+    h += flowHTML(d) + tableList(d);
+    v.innerHTML = h;
+    return;
+  }
   let chap = null;
   h += '<div class="artgrid">';
   (d.조문 || []).forEach((a, ai) => {
@@ -873,13 +1008,15 @@ function renderIndex() {
     h += '<button data-key="' + idxDoc + ":j:" + ai + '"><span class="n' + (a.삭제 ? " del" : "") + '">' +
       esc(a.조번호) + '</span><br><span class="m">' + esc(a.제목 || (a.삭제 ? "삭제" : (a.참고 ? "이동" : ""))) + "</span></button>";
   });
-  h += "</div>";
-  if ((d.별표 || []).length) {
-    h += '<div class="chap">별표 · 서식</div><ul class="list">' + d.별표.map((b, bi) =>
-      '<button class="row" data-key="' + idxDoc + ":b:" + bi + '"><span class="badge tbl">' + esc(b.번호) + "</span>" +
-      '<span class="grow"><span class="t">' + esc(b.제목 || "-") + "</span></span>" + ARW + "</button>").join("") + "</ul>";
-  }
+  h += "</div>" + tableList(d);
   v.innerHTML = h;
+}
+
+function tableList(d) {
+  if (!(d.별표 || []).length) return "";
+  return '<div class="chap">별표 · 서식</div><ul class="list">' + d.별표.map((b, bi) =>
+    '<button class="row" data-key="' + idxDoc + ":b:" + bi + '"><span class="badge tbl">' + esc(b.번호) + "</span>" +
+    '<span class="grow"><span class="t">' + esc(b.제목 || "-") + "</span></span>" + ARW + "</button>").join("") + "</ul>";
 }
 
 
@@ -1024,7 +1161,11 @@ function scaleHTML() {
    언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
    내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
 const CHANGES = [
-  ["2026-09-10", ["별표 괘선표를 표로 대폭 복원 (204건)",
+  ["2026-09-10", ["법령을 이어서 훑어보는 보기 추가",
+                  "조문 안에서 낱말 찾기 (돋보기)",
+                  "법령명을 누르면 목록으로 한 번에",
+                  "1. 가. 1) 층을 들여써 구조를 드러냄",
+                  "별표 괘선표를 표로 대폭 복원 (204건)",
                   "과태료 부과기준·위험물질 기준량 표 바로잡음",
                   "표 안에서 낱말이 끊기던 것 이어 붙임",
                   "새 판은 묻지 않고 자동으로 갈아탐",
@@ -1232,6 +1373,50 @@ function linkify(html, docIdx) {
 
 /* 위임 자료는 원문 조각의 문자 위치를 지정한다. 번호 인용을 먼저 처리한 뒤
    텍스트 노드만 감싸서 기존 링크·원문·HTML 이스케이프를 그대로 보존한다. */
+/* 목 기호의 깊이. 1. → 가. → 1) → 가) 로 내려간다.
+   깊이를 들여쓰기로 보여 주면 긴 조문에서 어디에 걸린 말인지가 눈에 잡힌다. */
+const DEPTH = [[/^[0-9]+\s*[.]/, 1], [/^[가-힣]\s*[.]/, 2],
+               [/^[0-9]+\s*[)]/, 3], [/^[가-힣]\s*[)]/, 4], [/^[①-⑮]/, 1]];
+
+function depthOf(t) {
+  for (const [re, d] of DEPTH) if (re.test(t)) return d;
+  return 0;
+}
+
+/* 한 목 안에 여러 층이 들어 있으면 줄마다 갈라 층대로 들여쓴다.
+   조문 링크는 목 전체를 기준으로 자리를 재므로 통째로 한 번에 만들고 나서 가른다.
+   가르다 태그가 끊길 낌새가 보이면 손대지 않는다 — 글이 깨지느니 안 들여쓴다. */
+function hoHTML(x, r, part) {
+  const html = articleText(x, r, part);
+  const lines = html.split("\n");
+  const safe = lines.every(l => (l.match(/<button/g) || []).length === (l.match(/<\/button>/g) || []).length &&
+                                (l.match(/<a /g) || []).length === (l.match(/<\/a>/g) || []).length);
+  const parts = safe ? lines : [html];
+  return parts.map(l => l.trim() ? '<div class="ho d' + depthOf(l.trim()) + '">' + l.trim() + "</div>" : "")
+    .join("");
+}
+
+/* 조문 한 개의 글. 조문 화면과 이어 보기가 같은 것을 쓴다 */
+function artBody(r, withPen) {
+  const d = DOCS[r.d], a = d.조문[r.i];
+  let h = '<div class="art">';
+  if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + articleText(a.본문, r, "본문") + "</p>";
+  (a.항 || []).forEach((hg, n) => {
+    h += '<div class="hang">';
+    if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + articleText(hg.내용, r, "항" + n) + "</p>";
+    else if (hg.번호) h += '<p><span class="hn">' + esc(hg.번호) + "</span></p>";
+    (hg.호 || []).forEach((x, i) => { h += hoHTML(x, r, "항" + n + "호" + i); });
+    h += "</div>";
+    /* 그 항을 어겼을 때 따라오는 것 — 다음 항으로 넘어가기 전에 붙인다 */
+    if (withPen) h += penHTML(((a.벌 || {}).항 || {})[n + 1], d);
+  });
+  /* 조 전체에 걸리는 것은 어느 항의 몫으로 읽히면 안 되므로 맨 아래에 둔다 */
+  if (withPen) h += penHTML((a.벌 || {}).끝, d);
+  if (a.참고) h += '<div class="moved">' + linkify(esc(a.참고), r.d) + "</div>";
+  if (!a.본문 && !(a.항 || []).length && !a.참고) h += '<p class="del">본문이 없는 조문입니다.</p>';
+  return h + "</div>";
+}
+
 function articleText(text, r, part) {
   const html = linkify(esc(text), r.d);
   const links = (DOCS[r.d].조문[r.i].위임 || []).map((x, i) => ({ ...x, id: i }))
@@ -1338,23 +1523,7 @@ function showRec(key) {
     h += ZOOM;
     h += '<div class="tblwrap"><pre class="tbl">' + esc(r.body) + "</pre></div>";
   } else {
-    const a = d.조문[r.i];
-    h += '<div class="art">';
-    if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + articleText(a.본문, r, "본문") + "</p>";
-    (a.항 || []).forEach((hg, n) => {
-      h += '<div class="hang">';
-      if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + articleText(hg.내용, r, "항" + n) + "</p>";
-      else if (hg.번호) h += '<p><span class="hn">' + esc(hg.번호) + "</span></p>";
-      (hg.호 || []).forEach((x, i) => { h += '<div class="ho">' + articleText(x, r, "항" + n + "호" + i) + "</div>"; });
-      h += "</div>";
-      /* 그 항을 어겼을 때 따라오는 것 — 다음 항으로 넘어가기 전에 붙인다 */
-      h += penHTML(((a.벌 || {}).항 || {})[n + 1], d);
-    });
-    /* 조 전체에 걸리는 것은 어느 항의 몫으로 읽히면 안 되므로 맨 아래에 둔다 */
-    h += penHTML((a.벌 || {}).끝, d);
-    if (a.참고) h += '<div class="moved">' + linkify(esc(a.참고), r.d) + "</div>";
-    if (!a.본문 && !(a.항 || []).length && !a.참고) h += '<p class="del">본문이 없는 조문입니다.</p>';
-    h += "</div>";
+    h += artBody(r, true);
   }
 
   const sib = RECS.filter(x => x.d === r.d && x.kind === r.kind);
@@ -1367,6 +1536,8 @@ function showRec(key) {
   h += "</div>";
   $("#rbody").innerHTML = h;
   paintHL();
+  /* 이전·다음으로 옮겨도 찾던 낱말은 그대로 짚어 준다 */
+  if (!$("#findbar").hidden && findQ) { hlToks = [findQ]; paintHL(); showFind(0); }
   $("#rbody").scrollTop = 0;
   $("#reader").hidden = false;
   document.body.style.overflow = "hidden";
@@ -1457,6 +1628,7 @@ function syncSaveGo() {
 }
 
 function hideReader() {
+  if ($("#findbar") && !$("#findbar").hidden) closeFind();
   $("#reader").hidden = true;
   cur = null; delegation = null;
   document.body.style.overflow = "";
@@ -1866,6 +2038,14 @@ function start() {
       else go({ t: "index", doc: null, adv: advPage, key: null });
       return;
     }
+    const ix = e.target.closest("[data-idx]");
+    if (ix) {
+      idxFlow = ix.dataset.idx === "flow";
+      store.set("idxFlow", idxFlow);
+      renderIndex();
+      window.scrollTo(0, 0);
+      return;
+    }
     const ag = e.target.closest("[data-adv-go]");
     if (ag) { go({ t: "adv", doc: idxDoc, adv: ag.dataset.advGo, key: null }); return; }
     if (e.target.closest("#advback")) {
@@ -1890,7 +2070,17 @@ function start() {
     if (e.target.closest("#more")) { shown += 100; renderSearch(); return; }
   });
   $("#rback").onclick = () => history.back();
+  $("#rwho").onclick = exitReader;
   $("#rhl").onclick = clearHL;
+  $("#rfind").onclick = () => ($("#findbar").hidden ? openFind() : closeFind());
+  $("#findq").addEventListener("input", e => runFind(e.target.value));
+  $("#findq").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); showFind(findAt + (e.shiftKey ? -1 : 1)); }
+    if (e.key === "Escape") closeFind();
+  });
+  $("#findprev").onclick = () => showFind(findAt - 1);
+  $("#findnext").onclick = () => showFind(findAt + 1);
+  $("#findx").onclick = closeFind;
   $("#rshare").onclick = openShare;
   $("#rstar").onclick = () => {
     if (!cur) return;
@@ -1910,6 +2100,8 @@ function start() {
     applyView(views[i] || { t: "search", doc: null, key: null });
   });
   addEventListener("keydown", e => {
+    /* 찾기 창이 열려 있으면 그것부터 닫는다 — 조문까지 함께 닫히면 놀란다 */
+    if (e.key === "Escape" && !$("#findbar").hidden) { closeFind(); return; }
     if (e.key === "Escape" && !$("#reader").hidden) history.back();
     if (e.key === "/" && !e.target.closest("input,textarea")) { e.preventDefault(); $("#q").focus(); }
   });

@@ -343,6 +343,27 @@
      document.querySelectorAll("#v-index .artgrid button").length + "개");
   ok("목차: 장 제목", !!document.querySelector("#v-index .chap"));
 
+  /* 조문을 하나씩 눌러 보는 것과 법령을 통째로 훑는 것은 쓰임이 다르다 */
+  ok("보기 전환 단추", document.querySelectorAll('#v-index [data-idx]').length === 2 &&
+     !!$$('#v-index [data-idx="grid"].on'));
+  const idxN = DOCS[idxDoc].조문.length;
+  $$('#v-index [data-idx="flow"]').click(); await wait(600);
+  ok("이어 보기: 조문 전체를 한 번에", document.querySelectorAll("#v-index .fart").length === idxN,
+     document.querySelectorAll("#v-index .fart").length + "/" + idxN);
+  ok("이어 보기: 조문 글이 함께", document.querySelectorAll("#v-index .fart .art p").length > 50,
+     document.querySelectorAll("#v-index .fart .art p").length + "개");
+  /* 목의 층을 들여쓴다 — 1. 아래 가., 그 아래 1) */
+  ok("목의 층을 들여씀", document.querySelectorAll("#v-index .ho.d1").length > 10 &&
+     document.querySelectorAll("#v-index .ho.d2").length > 0,
+     document.querySelectorAll("#v-index .ho.d1").length + " / " +
+     document.querySelectorAll("#v-index .ho.d2").length);
+  ok("고른 보기를 기억함", localStorage.getItem("osh:idxFlow") === "true");
+  $$("#v-index .fart .fh").click(); await wait(450);
+  ok("이어 보기에서 조문으로", !$$("#reader").hidden);
+  history.back(); await wait(450);
+  $$('#v-index [data-idx="grid"]').click(); await wait(450);
+  ok("조문 목록으로 되돌아옴", !$$("#v-index .fart") && !!$$("#v-index .artgrid"));
+
   // 저장
   document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(200);
   await type("38"); cards()[0].click(); await wait(300);
@@ -720,6 +741,51 @@
      /count/.test(watchUpdate.toString()));
   ok("앱 업데이트 확인은 그대로 둔다", typeof checkUpdate === "function" &&
      !/새 판으로 바꾸기/.test(checkUpdate.toString()));
+
+  /* 이전·다음을 여러 번 누른 뒤 한 번에 빠져나오기 — 법령명이 곧 나가는 문이다 */
+  await type("지게차");
+  const hitN = cards().length;
+  cards()[0].click(); await wait(450);
+  $$("#next").click(); await wait(350);
+  $$("#next").click(); await wait(350);
+  $$("#next").click(); await wait(350);
+  ok("이전·다음으로 조문을 옮겨 다님", !$$("#reader").hidden);
+  $$("#rwho").click(); await wait(600);
+  ok("법령명을 눌러 한 번에 빠져나옴", $$("#reader").hidden && curTab() === "search");
+  ok("빠져나오면 찾던 목록 그대로", cards().length === hitN && $$("#q").value === "지게차",
+     cards().length + "/" + hitN);
+
+  /* 긴 조문은 화면 몇 개가 넘어간다. 그 안에서만 낱말을 짚어 준다 */
+  cards()[0].click(); await wait(450);
+  ok("조문 화면에 찾기 단추", !!$$("#rfind"));
+  $$("#rfind").click(); await wait(300);
+  ok("찾기 창 열림", !$$("#findbar").hidden);
+  /* 조문 링크 경계에 걸친 낱말은 형광펜이 못 칠한다(마디가 갈려 있다).
+     본문에서 낱말을 몇 개 골라, 실제로 칠해지는 것으로 시험한다. */
+  const words = (txt($$("#rbody .art")).match(/[가-힣]{2,}/g) || []).slice(0, 30);
+  const cands = words.map(c => c.slice(0, 3)).concat(words.map(c => c.slice(0, 2)));
+  let word = "", best = 0;
+  for (const c of cands) {
+    $$("#findq").value = c;
+    $$("#findq").dispatchEvent(new Event("input", { bubbles: true })); await wait(220);
+    const hit = document.querySelectorAll("#rbody mark").length;
+    if (hit > best) { best = hit; word = c; }
+    if (best >= 2) break;                 /* 다음·이전을 시험하려면 두 곳은 있어야 한다 */
+  }
+  $$("#findq").value = word;
+  $$("#findq").dispatchEvent(new Event("input", { bubbles: true })); await wait(300);
+  ok("찾은 자리를 형광펜으로", document.querySelectorAll("#rbody mark").length > 0,
+     word + " · " + document.querySelectorAll("#rbody mark").length + "곳");
+  ok("몇 번째인지 알려 줌", /^\d+\/\d+$/.test(txt($$("#findn"))), txt($$("#findn")));
+  ok("지금 자리를 따로 표시", !!$$("#rbody mark.cur"));
+  const first = txt($$("#findn"));
+  $$("#findnext").click(); await wait(300);
+  ok("다음으로 옮겨 감", txt($$("#findn")) !== first, first + " → " + txt($$("#findn")));
+  $$("#findprev").click(); await wait(300);
+  ok("이전으로 되돌아옴", txt($$("#findn")) === first);
+  $$("#findx").click(); await wait(300);
+  ok("닫으면 형광펜도 걷힘", $$("#findbar").hidden && !document.querySelectorAll("#rbody mark").length);
+  history.back(); await wait(450);
 
   // 조문 공유 — 링크 없이 글만, 벌칙·과태료는 고르게
   await type("법 42"); cards()[0].click(); await wait(500);
