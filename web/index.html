@@ -563,9 +563,12 @@ function buildIndex() {
   });
 }
 
+const ZOOM = '<div class="zoom"><span>표 크기</span><button data-z="-1">−</button>' +
+  '<button data-z="1">+</button></div>';
+
 /* 괘선표에서 풀어낸 별표 — 검색은 글자만 이어 붙여서 하고, 화면은 표로 그린다 */
 function piecesText(ps) {
-  return ps.map(p => p[0] === "t" ? p[1]
+  return ps.map(p => p[0] !== "r" ? p[1]
     : p[1].map(row => row.map(c => typeof c === "string" ? c : c[0]).join(" ")).join("\n")
   ).join("\n");
 }
@@ -573,6 +576,8 @@ function piecesText(ps) {
 function piecesHTML(ps) {
   return ps.map(p => {
     if (p[0] === "t") return '<div class="tbltext">' + esc(p[1]) + "</div>";
+    /* 풀지 못한 덩이. 칸을 잘못 맞춘 표를 보이느니 원문 그대로가 낫다 */
+    if (p[0] === "p") return '<div class="tblwrap"><pre class="tbl">' + esc(p[1]) + "</pre></div>";
     const rows = p[1];
     let out = '<div class="gridwrap"><table class="grid">';
     rows.forEach((row, i) => {
@@ -1394,12 +1399,14 @@ function showRec(key) {
   if (when) h += '<div class="rwhen">' + whenLabel + esc(when) + "</div>";
 
   if (r.kind === 1 && r.ps) {
+    /* 원문으로 남은 덩이가 섞여 있으면 글자 크기 단추가 있어야 읽을 수 있다 */
+    if (r.ps.some(p => p[0] === "p")) h += ZOOM;
     h += piecesHTML(r.ps);
   } else if (r.kind === 1 && r.flow) {
     /* 칸이 없는 별표는 고정폭으로 붙들어 둘 이유가 없다. 폰 너비에 맞춰 접는다 */
     h += '<div class="tbltext">' + esc(r.body) + "</div>";
   } else if (r.kind === 1) {
-    h += '<div class="zoom"><span>표 크기</span><button data-z="-1">−</button><button data-z="1">+</button></div>';
+    h += ZOOM;
     h += '<div class="tblwrap"><pre class="tbl">' + esc(r.body) + "</pre></div>";
   } else {
     const a = d.조문[r.i];

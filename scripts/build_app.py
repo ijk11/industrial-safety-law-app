@@ -230,6 +230,10 @@ def split_cells(l, edges, tol):
             continue
         if buf is not None:
             buf.append(ch)
+    # 마지막 세로선 뒤에 글이 남았다면 칸 밖으로 삐져나온 것이다. 어느 칸에 넣을지
+    # 지어낼 수 없으니 손을 뗀다 — 원문 그대로 두면 적어도 글자를 잃지는 않는다.
+    if buf is not None and "".join(buf).strip():
+        return None
     return cells or None
 
 
@@ -412,20 +416,36 @@ def build_corpus(docs):
 
 
 def split_table(text, corpus=None):
-    """별표를 [['t', 글] | ['r', 행목록]] 으로 자른다. 표를 못 풀면 None."""
+    """별표를 [['t', 글] | ['r', 행목록] | ['p', 원문]] 으로 자른다. 표가 하나도 없으면 None.
+
+    덩이 하나를 못 풀었다고 별표 전체를 원문으로 떨어뜨리지 않는다. 그렇게 하면
+    멀쩡히 풀린 표까지 고정폭으로 남아 폰에서 가로로 잘린다 — 별표 5 는 표 열한
+    덩이가 한 칸짜리 상자 하나 때문에 통째로 원문이었다.
+    못 푼 덩이는 'p' 로 원문 그대로 둔다. 글자는 하나도 잃지 않는다.
+    """
     out, seen = [], False
     for kind, lines in blocks(text):
         if kind == "txt":
             s = join(lines, corpus)
-            # 세로선이 남은 조각은 표의 일부일 수 있다. 반쪽 표를 만들지 않는다.
+            # 세로선이 남은 조각은 표의 일부다. 흘려보내면 칸이 뒤섞이므로 원문으로 둔다.
             if RE_BOX.search(s):
-                return None
+                out.append(["p", NL.join(lines)])
+                continue
             if s.strip():
                 out.append(["t", s])
             continue
+        # 칸이 하나뿐인 상자는 표가 아니라 글을 담아 둔 것이다. 괘선만 걷어내 흘린다.
+        if col_count(NL.join(lines)) <= 1:
+            body = NL.join(strip_box(NL.join(lines))).strip(NL)
+            if not RE_BOX.search(body):
+                s = join(body.split(NL), corpus)
+                if s.strip():
+                    out.append(["t", s])
+                continue
         rows = parse(lines)
         if rows is None:
-            return None
+            out.append(["p", NL.join(lines)])
+            continue
         seen = True
         rows = [[(join(c.split(NL), corpus), n) for c, n in row] for row in rows]
         out.append(["r", [[c if n == 1 else [c, n] for c, n in row] for row in rows]])
