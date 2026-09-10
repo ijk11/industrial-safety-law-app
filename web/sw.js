@@ -1,5 +1,5 @@
 /* 산안법 조문 찾기 — 오프라인 캐시. 판이 바뀌면 CACHE 이름이 바뀌고 옛 캐시는 지워진다. */
-const CACHE = "osh-e888116a5ed1";
+const CACHE = "osh-d6ad9c3b4faa";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,7 +32,11 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  /* 반드시 서버에서 새로 받아 담는다. 그냥 addAll 하면 브라우저가 제 캐시에 둔 옛
+     파일을 내주어, 판 이름만 새것이고 내용은 옛것인 캐시가 만들어진다.
+     그러면 앱을 껐다 켜도 옛 화면이 그대로 나온다. */
+  e.waitUntil(caches.open(CACHE).then(c =>
+    c.addAll(ASSETS.map(u => new Request(u, { cache: "reload" })))));
 });
 
 self.addEventListener("activate", e => {

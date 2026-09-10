@@ -89,6 +89,15 @@ TAIL_EXTRA = """<style>
 })();
 </script>
 <script>
+/* 지금 이 화면이 어느 판인지를 먼저 적어 둔다.
+   새 판은 묻지 않고 갈아타되 화면은 그대로 두므로, 캐시가 새 판으로 바뀐 뒤에도
+   돌고 있는 것은 옛 판이다. 나중에 캐시 이름을 읽으면 새 판으로 보여 거짓이 된다.
+   등록하기 전에 읽어야 갈아타기와 겹치지 않는다. */
+if (window.caches) {
+  caches.keys().then(k => {
+    window.__runVer = (k.find(x => x.indexOf("osh-") === 0) || "").slice(4);
+  }).catch(() => {});
+}
 if ("serviceWorker" in navigator) {
   addEventListener("load", () => {
     /* 새 판을 받으면 앱 쪽 watchUpdate() 가 묻지 않고 갈아탄다.
@@ -103,7 +112,11 @@ const CACHE = "osh-{version}";
 const ASSETS = {assets};
 
 self.addEventListener("install", e => {{
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  /* 반드시 서버에서 새로 받아 담는다. 그냥 addAll 하면 브라우저가 제 캐시에 둔 옛
+     파일을 내주어, 판 이름만 새것이고 내용은 옛것인 캐시가 만들어진다.
+     그러면 앱을 껐다 켜도 옛 화면이 그대로 나온다. */
+  e.waitUntil(caches.open(CACHE).then(c =>
+    c.addAll(ASSETS.map(u => new Request(u, {{ cache: "reload" }})))));
 }});
 
 self.addEventListener("activate", e => {{
