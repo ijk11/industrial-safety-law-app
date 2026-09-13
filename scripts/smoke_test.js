@@ -594,8 +594,8 @@
      !$$("#v-adv .sec") && /인터넷 없이 찾습니다/.test(txt($$("#v-adv .advnote"))),
      txt($$("#v-adv .advnote")).slice(0, 34));
   ok("소개에 법적 효력을 밝힘", /법적 효력은 원문에 있습니다/.test(txt($$("#v-adv .advnote"))));
-  ok("첫 화면은 벌칙 모아보기를 맨 위에 둔 세 갈래",
-     document.querySelectorAll("#v-adv .row").length === 3 &&
+  ok("첫 화면은 벌칙 모아보기를 맨 위에 둔 네 갈래",
+     document.querySelectorAll("#v-adv .row").length === 4 &&
      $$("#v-adv .row").dataset.advGo === "pen" && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
   /* 기초 법지식은 걷어냈다. 자취가 남으면 눌러도 빈 화면이 뜬다 */
@@ -622,7 +622,7 @@
   history.back(); await wait(450);
   ok("뒤로가기: 모아보기로 복귀", !!$$("#v-adv .artgrid"));
   history.back(); await wait(500);
-  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 3 && !$$("#v-adv .crumb"));
+  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#v-adv .crumb"));
 
   /* 상시근로자 기준표는 정리한 것이라, 근거가 실제 조문에 닿는지가 생명이다.
      법이 개정돼 조문 번호가 바뀌면 여기서 먼저 걸린다. */
@@ -663,9 +663,110 @@
   ok("근거를 눌러 조문으로", !$$("#reader").hidden, want + " → " + txt($$("#rwho")) + " " + txt($$("#rno")).slice(0, 16));
   history.back(); await wait(450);
   $$("#advback").click(); await wait(500);
-  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 3);
+  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 4);
   /* 연락처가 뒤에 붙을 수 있다. 이름이 밝혀져 있는지만 본다 */
   ok("기타 탭 아래에 만든 사람", /^제작: 김익중/.test(txt($$("#v-adv .by"))), txt($$("#v-adv .by")));
+
+  // 랜덤으로 조문 보기 — 한 장씩 무작위로, 옆으로 밀어 넘긴다
+  ok("규모별 의무 바로 아래에 랜덤으로 조문 보기",
+     [...document.querySelectorAll("#v-adv .row")].map(e => e.dataset.advGo).join(",") === "pen,scale,rand,ver",
+     [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
+  $$('#v-adv [data-adv-go="rand"]').click(); await wait(500);
+  ok("랜덤으로 조문 보기로 들어감", /랜덤으로 조문 보기/.test(txt($$("#v-adv .crumb"))) && !!$$("#rndcard"));
+  {
+    const rk = () => $$("#rndcard").dataset.host;
+    const docOf = k => DOCS[BYKEY.get(k).d].법령명;
+    ok("기본 범위는 산업안전보건법", docOf(rk()) === "산업안전보건법" &&
+       /^산업안전보건법 · 조문 \d+개$/.test(txt($$("#rndscopev"))), txt($$("#rndscopev")) + " · " + docOf(rk()));
+    ok("카드에 조문 본문", txt($$("#rndcard .art")).length > 10 &&
+       txt($$("#rndcard .rndttl")).indexOf(BYKEY.get(rk()).no) === 0, txt($$("#rndcard .rndttl")));
+    ok("처음에는 되돌아갈 조문이 없음", $$("#rndprev").disabled);
+
+    const got = [rk()];
+    for (let i = 0; i < 10; i++) { $$("#rndnext").click(); await wait(420); got.push(rk()); }
+    ok("넘길 때마다 다른 조문", new Set(got).size === got.length, got.map(k => BYKEY.get(k).no).join(" "));
+    ok("넘겨도 고른 범위 안", got.every(k => docOf(k) === "산업안전보건법"));
+    ok("차례가 아니라 무작위", !got.every((k, i) => i === 0 || BYKEY.get(k).i === BYKEY.get(got[i - 1]).i + 1));
+    $$("#rndprev").click(); await wait(420);
+    ok("방금 본 조문으로 되돌아감", rk() === got[got.length - 2] && !$$("#rndprev").disabled);
+    $$("#rndnext").click(); await wait(420);
+    ok("다시 넘기면 보던 조문", rk() === got[got.length - 1]);
+
+    /* 손가락으로 민다. 가장자리가 아닌 카드 한가운데에서 시작한다 */
+    const swipe = async (from, to) => {
+      const card = $$("#rndcard");
+      const ev = (type, x) => card.dispatchEvent(new PointerEvent(type,
+        { pointerId: 9, pointerType: "touch", clientX: x, clientY: 300, bubbles: true }));
+      ev("pointerdown", from); ev("pointermove", (from + to) / 2); ev("pointermove", to); ev("pointerup", to);
+      await wait(500);
+    };
+    const before = rk();
+    await swipe(320, 120);
+    ok("왼쪽으로 밀면 다른 조문", rk() !== before && !got.includes(rk()), BYKEY.get(rk()).no);
+    await swipe(120, 320);
+    ok("오른쪽으로 밀면 방금 본 조문", rk() === before);
+    await swipe(320, 290);
+    ok("살짝 밀면 넘기지 않음", rk() === before && !$$("#rndcard").style.transform);
+
+    /* 한 바퀴를 다 돌기 전에는 같은 조문이 다시 나오지 않는다 */
+    const pool = rndPool().length;
+    const bag = new Set();
+    rndBag = [];
+    for (let i = 0; i < pool; i++) bag.add(rndDraw());
+    ok("한 바퀴 안에서는 되풀이 없음", pool > 150 && bag.size === pool, bag.size + "/" + pool);
+
+    /* 위임 문구를 누르면 그 조문의 위임 목록으로 곧장 간다 */
+    const many = RECS.find(r => r.kind === 0 && DOCS[r.d].법령명 === "산업안전보건법" &&
+      (DOCS[r.d].조문[r.i].위임 || []).some(x => x.대상.filter(k => BYKEY.get(k)).length > 1));
+    rndDeck.push(many.key); rndAt = rndDeck.length - 1; rndPaint();
+    const dl = $$("#rndcard [data-delegate]");
+    if (dl) {
+      dl.click(); await wait(500);
+      ok("카드의 위임 문구로 위임 목록", !$$("#reader").hidden && !!$$("#delegatelist .drow"), many.no);
+      history.back(); await wait(450);
+      ok("뒤로가기: 카드 그대로", $$("#reader").hidden && rk() === many.key);
+    } else ok("카드의 위임 문구로 위임 목록", false, many.no + " 에 위임 단추 없음");
+
+    const k0 = rk();
+    $$("#rndcard .rndttl").click(); await wait(500);
+    ok("제목을 눌러 조문 화면으로", !$$("#reader").hidden && cur && cur.key === k0, txt($$("#rno")).slice(0, 20));
+    history.back(); await wait(450);
+    ok("뒤로가기: 보던 무작위 조문 그대로", $$("#reader").hidden && rk() === k0);
+
+    /* 범위를 바꾼다 — 안전보건규칙만 */
+    ok("범위 칸은 접혀 있음", $$("#rndscopebox").hidden);
+    $$("#rndscope").click(); await wait(250);
+    ok("눌러서 범위 칸을 펼침", !$$("#rndscopebox").hidden &&
+       document.querySelectorAll("#rndchips .chip").length >= 7, document.querySelectorAll("#rndchips .chip").length + "개");
+    $$('#rndchips [data-rs="기준"]').click(); await wait(300);
+    ok("여러 범위를 함께", JSON.stringify(store.get("randScope")) === '["법","기준"]' &&
+       /외 1/.test(txt($$("#rndscopev"))), txt($$("#rndscopev")));
+    $$('#rndchips [data-rs="법"]').click(); await wait(300);
+    const inRule = [];
+    for (let i = 0; i < 6; i++) { inRule.push(rk()); $$("#rndnext").click(); await wait(420); }
+    ok("안전보건규칙에서만 꺼냄", inRule.every(k => docOf(k) === "산업안전보건기준에 관한 규칙") &&
+       $$('#rndchips [data-rs="기준"]').getAttribute("aria-pressed") === "true" &&
+       $$('#rndchips [data-rs="법"]').getAttribute("aria-pressed") === "false",
+       inRule.map(k => BYKEY.get(k).no).join(" "));
+    ok("범위를 바꾸면 되돌아갈 길도 새로", rndDeck.length === 7, rndDeck.length + "장");
+    $$('#rndchips [data-rs="기준"]').click(); await wait(300);
+    ok("범위는 하나 이상 남음", JSON.stringify(store.get("randScope")) === '["기준"]' &&
+       $$('#rndchips [data-rs="기준"]').getAttribute("aria-pressed") === "true");
+    $$("#advback").click(); await wait(500);
+    ok("기타 첫 화면에 고른 범위", /^안전보건규칙 조문 [\d,]+개에서/.test(txt($$('#v-adv [data-adv-go="rand"] .s'))),
+       txt($$('#v-adv [data-adv-go="rand"] .s')));
+
+    /* 뒤 검사와 다음 실행을 위해 기본 범위로 돌려 둔다 */
+    $$('#v-adv [data-adv-go="rand"]').click(); await wait(500);
+    $$("#rndscope").click(); await wait(250);
+    $$('#rndchips [data-rs="법"]').click(); await wait(300);
+    $$('#rndchips [data-rs="기준"]').click(); await wait(300);
+    ok("기본 범위로 되돌림", JSON.stringify(store.get("randScope")) === '["법"]');
+  }
+  history.back(); await wait(500);
+  ok("뒤로가기: 랜덤에서 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#rndcard"));
+  ok("기본 범위 안내", /^산업안전보건법 조문 [\d,]+개에서/.test(txt($$('#v-adv [data-adv-go="rand"] .s'))),
+     txt($$('#v-adv [data-adv-go="rand"] .s')));
 
   // 법령 판 · 업데이트
   $$('#v-adv [data-adv-go="ver"]').click(); await wait(600);

@@ -381,6 +381,35 @@ nav.tabs svg{width:20px;height:20px}
 .chap .cn{display:inline-block;margin-left:5px;padding:0 6px;border-radius:9px;
   background:var(--surface-2);color:var(--ink-3);font-family:var(--font-ui);
   font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+/* 랜덤으로 조문 보기 — 한 장씩 넘기는 카드. 옆으로 밀면 무작위로 다음 장이 온다 */
+.rndscope{width:100%;display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:10px 12px;
+  border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left}
+.rndscope .k{flex:none;font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--ink-3)}
+.rndscope .v{flex:1;min-width:0;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.rndscope .go{flex:none;font-size:12.5px;font-weight:600;color:var(--accent)}
+.rndchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.rndchips .n{margin-left:4px;font-weight:400;opacity:.8;font-variant-numeric:tabular-nums}
+.rndcard{margin:4px 0 12px;padding:14px 15px 10px;background:var(--surface);border:1px solid var(--line);
+  border-radius:13px;box-shadow:var(--shadow);touch-action:pan-y;will-change:transform}
+.rndcard.anim{transition:transform .16s ease,opacity .16s ease}
+.rndhead{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:12px;color:var(--ink-3)}
+.rndhead .doc{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rndhead .cnt{flex:none;font-variant-numeric:tabular-nums}
+.rndttl{display:block;width:100%;padding:0;text-align:left;font-family:var(--font-serif);
+  font-weight:700;font-size:19px;line-height:1.4;color:var(--ink)}
+.rndttl .fn{color:var(--accent)}
+.rndttl:hover{color:var(--accent)}
+.rndcard .rchap{margin:2px 0 12px}
+.rndcard .art{font-size:15.5px}
+.rndopen{width:100%;margin-top:6px;padding:10px 0 2px;border-top:1px solid var(--line);
+  color:var(--accent);font-size:13px;font-weight:600;text-align:center}
+/* 긴 조문을 읽는 중에도 넘기는 단추가 손 닿는 데 있어야 한다. 탭 바로 위에 붙여 둔다 */
+.rndnav{position:sticky;bottom:calc(58px + env(safe-area-inset-bottom));z-index:5;display:flex;gap:8px;
+  padding:8px 0;background:var(--ground)}
+.rndnav button{flex:1;padding:12px;border:1px solid var(--line-2);border-radius:10px;
+  background:var(--surface);color:var(--ink-2);font-size:14px;font-weight:600}
+.rndnav button.go{flex:1.6;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rndnav button[disabled]{background:var(--surface-2);border-color:var(--line);color:var(--ink-3)}
 
 /* ---------- 홈 화면에 추가 권함 ---------- */
 .sheet{position:fixed;inset:0;z-index:80;display:grid;place-items:end center;
@@ -1096,6 +1125,8 @@ function renderAdv() {
         "과태료 " + penList("과").length + "개 · 형벌 " + penList("벌").length + "개 조문을 장별로") +
       advMenu("scale", "규모별 의무",
         "5명 미만부터 500명 이상까지 · 건설공사는 공사금액으로") +
+      advMenu("rand", "랜덤으로 조문 보기",
+        rndScopeLabel() + " 조문 " + rndPool().length.toLocaleString() + "개에서 한 장씩 · 옆으로 넘기기") +
       advMenu("ver", "법령 판 · 업데이트",
         "기준일 " + (BASIS || "-") + " · 담긴 법령 " + DOCS.length + "건 · 새 판 확인") +
       "</ul>" +
@@ -1106,9 +1137,11 @@ function renderAdv() {
     esc(ADV_NAME[advPage] || "") + "</span></div>";
   h += advPage === "pen" ? penPage()
      : advPage === "scale" ? scaleHTML()
+     : advPage === "rand" ? rndPage()
      : verPage();
   v.innerHTML = h;
   if (advPage === "ver") mountVersion();
+  if (advPage === "rand") mountRnd();
   v.querySelectorAll("[data-adv]").forEach(b => b.onclick = () => { advWhat = b.dataset.adv; renderAdv(); });
   v.querySelectorAll("[data-sc]").forEach(b => b.onclick = () => {
     const box = $("#" + b.dataset.sc);
@@ -1117,7 +1150,7 @@ function renderAdv() {
   });
 }
 
-const ADV_NAME = { pen: "벌칙 모아보기", scale: "규모별 의무", ver: "법령 판 · 업데이트" };
+const ADV_NAME = { pen: "벌칙 모아보기", scale: "규모별 의무", rand: "랜덤으로 조문 보기", ver: "법령 판 · 업데이트" };
 
 function advMenu(id, title, sub) {
   return '<button class="row" data-adv-go="' + id + '"><span class="grow">' +
@@ -1212,11 +1245,226 @@ function scaleHTML() {
 }
 
 
+/* ---------------- 랜덤으로 조문 보기 ----------------
+   찾을 것이 있을 때만 여는 앱이지만, 틈틈이 한 조문씩 읽어 두면 현장에서 떠오르는 것이
+   달라진다. 차례대로 읽으면 앞 장에서 지쳐 뒤를 못 본다 — 그래서 한 장씩 무작위로 꺼낸다.
+   옆으로 밀면 또 무작위다.
+
+   같은 조문이 금방 또 나오면 넘기는 맛이 없다. 범위의 조문을 한 번 섞어 두고 차례로
+   꺼내므로, 한 바퀴를 다 돌기 전에는 되풀이되지 않는다. 오른쪽으로 밀면 방금 본
+   조문으로 돌아간다 — 잘못 밀어 놓친 조문을 되찾는 길이다. */
+const RND_SCOPES = [
+  { id: "법", label: "산업안전보건법", has: d => d.약호 === "법" },
+  { id: "령", label: "시행령", has: d => d.약호 === "령" },
+  { id: "칙", label: "시행규칙", has: d => d.약호 === "칙" },
+  { id: "기준", label: "안전보건규칙", has: d => d.약호 === "기준" },
+  { id: "취업제한", label: "취업제한규칙", has: d => d.약호 === "취업제한" },
+  { id: "중대재해", label: "중대재해처벌법·령", has: d => d.계 === "중대재해" },
+  { id: "고시", label: "고시·훈령·예규", has: d => d.군 === "고시" || d.군 === "감독규정" },
+  { id: "지침", label: "지침", has: d => d.군 === "지침" }
+];
+const RND_DEFAULT = ["법"];
+let rndScope = null;            /* 고른 범위. 기기에 기억해 둔다 */
+let rndDeck = [], rndAt = -1;   /* 이번에 넘겨 본 조문과 지금 자리 */
+let rndBag = [], rndSig = "";   /* 섞어 두고 아직 안 꺼낸 조문, 그걸 섞은 범위 */
+let rndBusy = false;
+
+function rndIds() {
+  if (!rndScope) {
+    const s = store.get("randScope", RND_DEFAULT);
+    rndScope = Array.isArray(s) ? RND_SCOPES.map(x => x.id).filter(id => s.includes(id)) : [];
+    if (!rndScope.length) rndScope = RND_DEFAULT.slice();
+  }
+  return rndScope;
+}
+
+/* 삭제된 조문과 다른 곳으로 옮겨 간 자리표는 넘겨 봐야 읽을 것이 없다 */
+function rndPool(ids) {
+  const on = RND_SCOPES.filter(x => (ids || rndIds()).includes(x.id));
+  return RECS.filter(r => {
+    if (r.kind !== 0 || r.del || !on.some(x => x.has(DOCS[r.d]))) return false;
+    const a = DOCS[r.d].조문[r.i];
+    return !!(a.본문 || (a.항 || []).length);
+  });
+}
+
+function rndScopeLabel() {
+  const on = RND_SCOPES.filter(x => rndIds().includes(x.id));
+  return on[0].label + (on.length > 1 ? " 외 " + (on.length - 1) : "");
+}
+
+function rndDraw() {
+  const sig = rndIds().join(",");
+  if (sig !== rndSig) { rndSig = sig; rndBag = []; }
+  if (!rndBag.length) {
+    rndBag = rndPool().map(r => r.key);
+    for (let i = rndBag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rndBag[i], rndBag[j]] = [rndBag[j], rndBag[i]];
+    }
+    /* 한 바퀴를 돌고 새로 섞은 첫 장이 방금 본 조문이면 맨 뒤로 보낸다 */
+    if (rndBag.length > 1 && rndBag[rndBag.length - 1] === rndDeck[rndAt]) rndBag.unshift(rndBag.pop());
+  }
+  return rndBag.pop() || null;
+}
+
+/* 한 장 옮긴다. 앞으로는 본 적 있는 장이 남아 있으면 그것을, 없으면 새로 꺼낸다 */
+function rndStep(dir) {
+  if (dir < 0) {
+    if (rndAt <= 0) return false;
+    rndAt--;
+  } else if (rndAt < rndDeck.length - 1) {
+    rndAt++;
+  } else {
+    const k = rndDraw();
+    if (!k) return false;
+    rndDeck.push(k);
+    if (rndDeck.length > 200) rndDeck.shift();
+    rndAt = rndDeck.length - 1;
+  }
+  return true;
+}
+
+function rndPage() {
+  if (!BYKEY.get(rndDeck[rndAt])) { rndDeck = []; rndAt = -1; rndStep(1); }
+  return '<button class="rndscope" id="rndscope" aria-expanded="false" aria-controls="rndscopebox">' +
+      '<span class="k">범위</span><span class="v" id="rndscopev"></span><span class="go">바꾸기 ▸</span></button>' +
+    '<div id="rndscopebox" hidden><div class="rndchips" id="rndchips"></div>' +
+      '<p class="advnote">여러 개를 함께 고를 수 있습니다. 고른 범위는 기억해 둡니다.</p></div>' +
+    '<p class="advnote">옆으로 밀면 무작위로 다른 조문이 나오고, 오른쪽으로 밀면 방금 본 조문으로 돌아갑니다.</p>' +
+    '<article class="rndcard" id="rndcard" aria-live="polite"></article>' +
+    '<div class="rndnav"><button id="rndprev">← 방금 본 조문</button>' +
+      '<button id="rndnext" class="go">다른 조문 →</button></div>';
+}
+
+function rndScopeHTML() {
+  const ids = rndIds();
+  $("#rndscopev").textContent = rndScopeLabel() + " · 조문 " + rndPool().length.toLocaleString() + "개";
+  $("#rndchips").innerHTML = RND_SCOPES.map(x => {
+    const n = rndPool([x.id]).length;
+    return n ? '<button class="chip" data-rs="' + esc(x.id) + '" aria-pressed="' + ids.includes(x.id) + '">' +
+      esc(x.label) + '<span class="n">' + n.toLocaleString() + "</span></button>" : "";
+  }).join("");
+}
+
+function rndPaint() {
+  const card = $("#rndcard");
+  if (!card) return;
+  const r = BYKEY.get(rndDeck[rndAt]);
+  card.dataset.host = r ? r.key : "";
+  $("#rndprev").disabled = rndAt <= 0;
+  if (!r) { card.innerHTML = '<div class="empty"><b>고른 범위에 조문이 없습니다</b></div>'; return; }
+  const d = DOCS[r.d];
+  card.innerHTML = '<div class="rndhead"><span class="badge l' + d.단계 + '">' + esc(badgeLabel(d)) + "</span>" +
+      '<span class="doc">' + esc(d.법령명) + "</span></div>" +
+    '<button class="rndttl" data-key="' + r.key + '"><span class="fn">' + esc(r.no) + "</span>" +
+      (r.title ? " " + esc(r.title) : "") + "</button>" +
+    '<div class="rchap">' + esc(r.chap) + "</div>" +
+    artBody(r, true) +
+    '<button class="rndopen" data-key="' + r.key + '">조문 화면에서 열기 · 저장 · 공유</button>';
+  wirePen(card);
+}
+
+function mountRnd() {
+  rndScopeHTML();
+  rndPaint();
+  $("#rndscope").onclick = () => {
+    const box = $("#rndscopebox"), open = box.hidden;
+    box.hidden = !open;
+    $("#rndscope").setAttribute("aria-expanded", open);
+    $("#rndscope .go").textContent = open ? "접기 ▾" : "바꾸기 ▸";
+  };
+  $("#rndchips").onclick = e => {
+    const b = e.target.closest("[data-rs]");
+    if (!b) return;
+    const id = b.dataset.rs, ids = rndIds();
+    if (ids.includes(id) && ids.length === 1) { toast("범위는 하나 이상 골라야 합니다"); return; }
+    rndScope = RND_SCOPES.map(x => x.id).filter(x => x === id ? !ids.includes(x) : ids.includes(x));
+    store.set("randScope", rndScope);
+    /* 범위가 바뀌면 넘겨 온 길도 새로 시작한다. 방금 본 조문이 범위 밖일 수 있다 */
+    rndDeck = []; rndAt = -1; rndStep(1);
+    rndScopeHTML();
+    rndPaint();
+  };
+  $("#rndprev").onclick = () => rndGo(-1);
+  $("#rndnext").onclick = () => rndGo(1);
+  rndSwipe($("#rndcard"));
+}
+
+/* 밀어낸 쪽으로 빠지고 반대쪽에서 들어온다. 움직임을 줄이도록 해 둔 기기에서는 바로 바꾼다 */
+function rndGo(dir) {
+  const card = $("#rndcard");
+  if (!card || rndBusy) return;
+  if (!rndStep(dir)) { rndSnap(card); return; }
+  const ms = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 150;
+  const off = -dir * 56;
+  rndBusy = true;
+  card.classList.add("anim");
+  card.style.transform = "translateX(" + off + "px)";
+  card.style.opacity = "0";
+  setTimeout(() => {
+    rndPaint();
+    /* 긴 조문을 읽다 넘기면 다음 장의 첫머리가 이미 화면 위로 지나가 있다 */
+    if (card.getBoundingClientRect().top < $("header.top").getBoundingClientRect().bottom) window.scrollTo(0, 0);
+    card.classList.remove("anim");
+    card.style.transform = "translateX(" + (-off) + "px)";
+    void card.offsetWidth;
+    card.classList.add("anim");
+    card.style.transform = "";
+    card.style.opacity = "";
+    setTimeout(() => { card.classList.remove("anim"); rndBusy = false; }, ms);
+  }, ms);
+}
+
+function rndSnap(card) {
+  card.classList.add("anim");
+  card.style.transform = "";
+  card.style.opacity = "";
+  setTimeout(() => card.classList.remove("anim"), 170);
+}
+
+/* 손가락으로 민다. 세로로 움직이기 시작하면 스크롤로 두고 손대지 않는다.
+   화면 가장자리에서 시작한 밀기는 기기의 뒤로가기 몫이라 건드리지 않는다. */
+function rndSwipe(card) {
+  let id = null, x0 = 0, y0 = 0, dx = 0, horiz = null;
+  card.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" || rndBusy) return;
+    if (e.clientX < 24 || e.clientX > innerWidth - 24) return;
+    id = e.pointerId; x0 = e.clientX; y0 = e.clientY; dx = 0; horiz = null;
+  });
+  card.addEventListener("pointermove", e => {
+    if (e.pointerId !== id) return;
+    const mx = e.clientX - x0, my = e.clientY - y0;
+    if (horiz === null && Math.abs(mx) + Math.abs(my) > 10) horiz = Math.abs(mx) > Math.abs(my);
+    if (!horiz) return;
+    dx = mx;
+    card.style.transform = "translateX(" + dx + "px)";
+    card.style.opacity = String(Math.max(.4, 1 - Math.abs(dx) / 480));
+  });
+  const end = e => {
+    if (e.pointerId !== id) return;
+    id = null;
+    if (!horiz) return;
+    /* 밀다 뗀 자리의 링크가 눌린 것으로 치이지 않게 한 번만 막는다 */
+    const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
+    card.addEventListener("click", eat, true);
+    setTimeout(() => card.removeEventListener("click", eat, true), 400);
+    if (e.type === "pointerup" && Math.abs(dx) > 60) rndGo(dx < 0 ? 1 : -1);
+    else rndSnap(card);
+  };
+  card.addEventListener("pointerup", end);
+  card.addEventListener("pointercancel", end);
+}
+
+
 /* ---------------- 법령 판 · 업데이트 ----------------
    언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
    내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
 const CHANGES = [
-  ["2026-09-10", ["법령을 이어서 훑어보는 보기 추가",
+  ["2026-09-14", ["기타 탭에 랜덤으로 조문 보기 추가",
+                  "옆으로 밀어 다른 조문으로 · 방금 본 조문으로",
+                  "범위를 법·령·칙·안전보건규칙 등에서 고름"]],
+  ["2026-09-10",["법령을 이어서 훑어보는 보기 추가",
                   "조문 안에서 낱말 찾기 (돋보기)",
                   "법령명을 누르면 목록으로 한 번에",
                   "1. 가. 1) 층을 들여써 구조를 드러냄",
@@ -1651,11 +1899,7 @@ function showRec(key) {
   store.set("recent", recent);
   $("#prev") && ($("#prev").onclick = () => openRec(sib[at - 1].key, "sib"));
   $("#next") && ($("#next").onclick = () => openRec(sib[at + 1].key, "sib"));
-  $("#rbody").querySelectorAll("[data-pen]").forEach(b => b.onclick = () => {
-    const ul = $("#" + b.dataset.pen);
-    ul.hidden = !ul.hidden;
-    b.textContent = ul.hidden ? "경우별로 보기 ▸" : "접기 ▾";
-  });
+  wirePen($("#rbody"));
   $("#rbody").querySelectorAll("[data-z]").forEach(b => b.onclick = () => {
     const cs = parseFloat(getComputedStyle($("#rbody").querySelector(".tbl")).fontSize);
     const nv = Math.max(8, Math.min(22, cs + (+b.dataset.z)));
@@ -1693,6 +1937,15 @@ function penHTML(list, d) {
   }).join("");
 }
 let penSeq = 0;
+
+/* 경우별로 접어 둔 과태료를 눌러서 편다. 조문 화면과 랜덤 카드가 함께 쓴다 */
+function wirePen(box) {
+  box.querySelectorAll("[data-pen]").forEach(b => b.onclick = () => {
+    const ul = $("#" + b.dataset.pen);
+    ul.hidden = !ul.hidden;
+    b.textContent = ul.hidden ? "경우별로 보기 ▸" : "접기 ▾";
+  });
+}
 
 function chaHTML(m) {
   return ["1차", "2차", "3차"].map((n, i) =>
@@ -2129,6 +2382,12 @@ function start() {
   document.addEventListener("click", e => {
     const delegate = e.target.closest("[data-delegate]");
     if (delegate && cur) { go({ ...snapshot(), delegate: +delegate.dataset.delegate, dq: "" }); return; }
+    /* 조문 화면 밖(랜덤 카드)의 위임 문구는 그 조문을 열고 위임 목록으로 곧장 간다 */
+    const host = delegate && delegate.closest("[data-host]");
+    if (host && host.dataset.host) {
+      go({ ...snapshot(), key: host.dataset.host, delegate: +delegate.dataset.delegate, dq: "" });
+      return;
+    }
     const k = e.target.closest("[data-key]");
     if (k) { openRec(k.dataset.key, e.target.closest(".ref") ? "ref" : "new"); return; }
     const g = e.target.closest("[data-tab-go]");
@@ -2208,6 +2467,12 @@ function start() {
     /* 찾기 창이 열려 있으면 그것부터 닫는다 — 조문까지 함께 닫히면 놀란다 */
     if (e.key === "Escape" && !$("#findbar").hidden) { closeFind(); return; }
     if (e.key === "Escape" && !$("#reader").hidden) history.back();
+    /* PC 에서는 밀 수 없으니 화살표로 넘긴다 */
+    if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && tab === "adv" && advPage === "rand" &&
+        $("#reader").hidden && !e.target.closest("input,textarea")) {
+      e.preventDefault();
+      rndGo(e.key === "ArrowRight" ? 1 : -1);
+    }
     if (e.key === "/" && !e.target.closest("input,textarea")) { e.preventDefault(); $("#q").focus(); }
   });
 
