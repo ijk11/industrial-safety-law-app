@@ -625,6 +625,12 @@ def slim(docs):
                     del a[k]
             if not a.get("본문"):
                 a.pop("본문", None)
+        # 서식(별지 서식 포함)은 빈칸을 채우는 서류 양식이라 현장에서 조문 찾듯 볼 일이 없다.
+        # 원본이 이미지·HWP 라 글자만 남아 읽기도 어렵다. 별표만 싣는다.
+        # 서식은 늘 별표 뒤에 있어 빼도 별표의 순번(책갈피 열쇠)은 그대로다.
+        # 줄 잇기 문맥(corpus)은 서식까지 넣고 만든 뒤라 별표 결과도 전과 같다.
+        if "별표" in d:
+            d["별표"] = [b for b in d["별표"] if b["번호"].startswith("별표")]
         for b in d.get("별표", []):
             b["내용"] = "\n".join(l.rstrip() for l in b["내용"].split("\n")).strip("\n")
             kind, text = convert(b["내용"])

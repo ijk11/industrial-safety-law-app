@@ -227,8 +227,19 @@ mark.cur{background:var(--accent);color:var(--accent-ink)}
 .ho.d2{margin-left:28px}
 .ho.d3{margin-left:42px}
 .ho.d4{margin-left:56px}
-.ho.d1,.ho.d2,.ho.d3,.ho.d4{padding-left:1.5em;text-indent:-1.5em}
+.ho.d5{margin-left:68px}
+.ho.d6{margin-left:80px}
+.ho.d1,.ho.d2,.ho.d3,.ho.d4,.ho.d5,.ho.d6{padding-left:1.5em;text-indent:-1.5em}
 .ho + .ho{margin-top:4px}
+/* 기호 없이 앞 호에 딸린 줄 — 기호 밑이 아니라 글 밑에 붙인다 */
+.ho.cont{margin-top:0;text-indent:0}
+/* 별표의 글 덩이 — 조문과 같은 층으로 그리되 줄 사이는 조금 좁히고 칸 맞춘 공백은 살린다 */
+.art.bt p{margin:0 0 8px}
+.art.bt p,.art.bt .ho{white-space:pre-wrap}
+.art.bt .hang{margin:0 0 10px}
+/* <개정 2020.5.26> 같은 표시는 곁가지라 작고 흐리게 둔다. 「<」 뒤에서 갈라지지 않게
+   한 덩이로 줄을 넘기고, 한 줄보다 긴 것은 덩이 안에서 접힌다 */
+.amd{display:inline-block;text-indent:0;font-size:.8em;color:var(--ink-3);letter-spacing:0}
 
 /* 이어 보기 — 법령 전체를 끊김 없이 훑는다 */
 .flow{margin:0 0 10px}
@@ -591,7 +602,7 @@ function piecesText(ps) {
 
 function piecesHTML(ps) {
   return ps.map(p => {
-    if (p[0] === "t") return '<div class="tbltext">' + esc(p[1]) + "</div>";
+    if (p[0] === "t") return tblTextHTML(p[1]);
     /* 풀지 못한 덩이. 칸을 잘못 맞춘 표를 보이느니 원문 그대로가 낫다 */
     if (p[0] === "p") return '<div class="tblwrap"><pre class="tbl">' + esc(p[1]) + "</pre></div>";
     const rows = p[1];
@@ -1043,7 +1054,7 @@ function renderIndex() {
 
 function tableList(d) {
   if (!(d.별표 || []).length) return "";
-  return '<div class="chap">별표 · 서식</div><ul class="list">' + d.별표.map((b, bi) =>
+  return '<div class="chap">별표</div><ul class="list">' + d.별표.map((b, bi) =>
     '<button class="row" data-key="' + idxDoc + ":b:" + bi + '"><span class="badge tbl">' + esc(b.번호) + "</span>" +
     '<span class="grow"><span class="t">' + esc(b.제목 || "-") + "</span></span>" + ARW + "</button>").join("") + "</ul>";
 }
@@ -1406,7 +1417,11 @@ function rndSwipe(card) {
    언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
    내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
 const CHANGES = [
-  ["2026-09-14", ["기타 탭에 랜덤으로 조문 보기 추가",
+  ["2026-09-15", ["고시·지침·별표도 항·호·목을 층대로 표시",
+                  "<개정 …> 같은 표시를 작고 흐리게",
+                  "서식·별지 서식 삭제 (별표만 남김)",
+                  "이어 보기에서 위임 목록이 안 열리던 것 고침"]],
+  ["2026-09-14",["기타 탭에 랜덤으로 조문 보기 추가",
                   "옆으로 밀어 다른 조문으로 · 방금 본 조문으로",
                   "범위를 법·령·칙·안전보건규칙 등에서 고름"]],
   ["2026-09-10",["법령을 이어서 훑어보는 보기 추가",
@@ -1673,32 +1688,80 @@ function linkify(html, docIdx) {
    텍스트 노드만 감싸서 기존 링크·원문·HTML 이스케이프를 그대로 보존한다. */
 /* 목 기호의 깊이. 1. → 가. → 1) → 가) 로 내려간다.
    깊이를 들여쓰기로 보여 주면 긴 조문에서 어디에 걸린 말인지가 눈에 잡힌다. */
-const DEPTH = [[/^[0-9]+\s*[.]/, 1], [/^[가-힣]\s*[.]/, 2],
-               [/^[0-9]+\s*[)]/, 3], [/^[가-힣]\s*[)]/, 4], [/^[①-⑮]/, 1]];
+/* "가." 는 목 기호지만 "다." 는 끊긴 문장 끝일 수도 있어, 목에 쓰는 글자만 받는다.
+   "1.5미터" 처럼 소수점이 붙은 수는 호가 아니다. "7의2." 는 호다. */
+const MOK = "가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허";
+const DEPTH = [[new RegExp("^[0-9]+(?:의[0-9]+)?\\s*\\.(?![0-9])"), 1], [new RegExp("^[" + MOK + "]\\s*\\."), 2],
+               [/^[0-9]+\s*\)/, 3], [new RegExp("^[" + MOK + "]\\s*\\)"), 4],
+               [/^\(\s*[0-9]+\s*\)/, 5], [new RegExp("^\\(\\s*[" + MOK + "]\\s*\\)"), 6], [/^[①-⑳]/, 1]];
 
 function depthOf(t) {
   for (const [re, d] of DEPTH) if (re.test(t)) return d;
   return 0;
 }
 
-/* 한 목 안에 여러 층이 들어 있으면 줄마다 갈라 층대로 들여쓴다.
-   조문 링크는 목 전체를 기준으로 자리를 재므로 통째로 한 번에 만들고 나서 가른다.
-   가르다 태그가 끊길 낌새가 보이면 손대지 않는다 — 글이 깨지느니 안 들여쓴다. */
-function hoHTML(x, r, part) {
-  const html = articleText(x, r, part);
-  const lines = html.split("\n");
-  const safe = lines.every(l => (l.match(/<button/g) || []).length === (l.match(/<\/button>/g) || []).length &&
-                                (l.match(/<a /g) || []).length === (l.match(/<\/a>/g) || []).length);
-  const parts = safe ? lines : [html];
-  return parts.map(l => l.trim() ? '<div class="ho d' + depthOf(l.trim()) + '">' + l.trim() + "</div>" : "")
-    .join("");
+/* 개정·신설 표시는 조문을 읽는 데 곁가지다. 글자를 작고 흐리게 둔다 */
+const AMD_RE = /&lt;\s*(?:(?:개정|신설|삭\s*제|전문개정|제목개정|본조신설|타법개정|이동)[ \d.,·ㆍ]*|[\d. ,]{6,})&gt;|\[(?:시행일|전문개정|본조신설|제목개정|본조제목개정|종전)[^\]\n<]*\]|\[\s*\d{4}\s*[.-]\s*\d{1,2}\s*[.-]\s*\d{1,2}\s*\.?\s*\]/g;
+
+function amdHTML(html) {
+  return html.replace(AMD_RE, m => '<span class="amd">' + m + "</span>");
 }
 
-/* 조문 한 개의 글. 조문 화면과 이어 보기가 같은 것을 쓴다 */
+/* 여러 줄로 된 글을 줄마다 갈라 항·호·목의 층대로 그린다. 법률은 항·호가 따로 담겨
+   오지만, 고시·지침과 별표는 한 덩이 글에 줄로만 갈려 있어 그대로 두면 층이 안 보인다.
+   ①② 로 시작하는 줄은 항, 1. 가. 1) 가) (1) (가) 는 들여쓰는 호·목이다.
+   기호 없는 줄은 앞 줄에 딸린 말이라 그 글 밑에 맞춘다.
+   링크는 글 전체를 기준으로 자리를 재므로 통째로 만든 뒤에 가른다. 가르다 태그가
+   끊길 낌새가 보이면 null — 글이 깨지느니 안 가른다. inHo 는 호 하나 안의 목들이다. */
+function linesHTML(html, inHo) {
+  const lines = html.split("\n");
+  const pair = (l, open, close) => (l.match(open) || []).length === (l.match(close) || []).length;
+  if (!lines.every(l => pair(l, /<button/g, /<\/button>/g) && pair(l, /<a /g, /<\/a>/g) &&
+                        pair(l, /<span/g, /<\/span>/g))) return null;
+  let out = "", hang = false, depth = 0;
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (!l) continue;
+    const plain = l.replace(/<[^>]*>/g, "");
+    const hm = !inHo && /^[①-⑳]/.exec(plain);
+    if (hm && l.indexOf(hm[0]) === 0) {
+      if (hang) out += "</div>";
+      out += '<div class="hang"><p><span class="hn">' + hm[0] + "</span>" + l.slice(hm[0].length).trim() + "</p>";
+      hang = true; depth = 0;
+      continue;
+    }
+    const dp = depthOf(plain);
+    if (dp) { out += '<div class="ho d' + dp + '">' + l + "</div>"; depth = dp; }
+    else if (depth) out += '<div class="ho d' + depth + ' cont">' + l + "</div>";
+    else if (inHo) out += '<div class="ho d0">' + l + "</div>";
+    else out += "<p>" + l + "</p>";
+  }
+  return out + (hang ? "</div>" : "");
+}
+
+function hoHTML(x, r, part) {
+  const html = articleText(x, r, part);
+  return linesHTML(html, true) ||
+    '<div class="ho d' + depthOf(html.trim().replace(/<[^>]*>/g, "")) + '">' + html.trim() + "</div>";
+}
+
+/* 별표의 글 덩이. 조문과 같은 층으로 그리되 여러 칸 띄운 공백은 살린다 */
+function tblTextHTML(text) {
+  const html = amdHTML(esc(text));
+  return '<div class="tbltext art bt">' + (linesHTML(html) || html) + "</div>";
+}
+
+/* 조문 한 개의 글. 조문 화면과 이어 보기가 같은 것을 쓴다.
+   data-host 는 조문 화면 밖(이어 보기·랜덤 카드)에서 위임 문구를 눌렀을 때
+   어느 조문의 위임인지 알려 준다. */
 function artBody(r, withPen) {
   const d = DOCS[r.d], a = d.조문[r.i];
-  let h = '<div class="art">';
-  if (a.본문) h += "<p" + (a.삭제 ? ' class="del"' : "") + ">" + articleText(a.본문, r, "본문") + "</p>";
+  let h = '<div class="art" data-host="' + r.key + '">';
+  if (a.본문) {
+    const html = articleText(a.본문, r, "본문");
+    h += (a.본문.indexOf("\n") >= 0 && linesHTML(html)) ||
+      "<p" + (a.삭제 ? ' class="del"' : "") + ">" + html + "</p>";
+  }
   (a.항 || []).forEach((hg, n) => {
     h += '<div class="hang">';
     if (hg.내용) h += "<p>" + (hg.번호 ? '<span class="hn">' + esc(hg.번호) + "</span>" : "") + articleText(hg.내용, r, "항" + n) + "</p>";
@@ -1716,7 +1779,7 @@ function artBody(r, withPen) {
 }
 
 function articleText(text, r, part) {
-  const html = linkify(esc(text), r.d);
+  const html = amdHTML(linkify(esc(text), r.d));
   const links = (DOCS[r.d].조문[r.i].위임 || []).map((x, i) => ({ ...x, id: i }))
     .filter(x => x.부분 === part);
   if (!links.length) return html;
@@ -1816,7 +1879,7 @@ function showRec(key) {
     h += piecesHTML(r.ps);
   } else if (r.kind === 1 && r.flow) {
     /* 칸이 없는 별표는 고정폭으로 붙들어 둘 이유가 없다. 폰 너비에 맞춰 접는다 */
-    h += '<div class="tbltext">' + esc(r.body) + "</div>";
+    h += tblTextHTML(r.body);
   } else if (r.kind === 1) {
     h += ZOOM;
     h += '<div class="tblwrap"><pre class="tbl">' + esc(r.body) + "</pre></div>";

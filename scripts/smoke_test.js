@@ -56,7 +56,11 @@
   ok("물려도 남겨 두지 않는다", localStorage.getItem("osh:instOff") === null);
   ok("이미 설치했으면 아예 안 물음", typeof installed === "function" && !installed());
   ok("법령 66건 적재", typeof DOCS !== "undefined" && DOCS.length === 66, typeof DOCS !== "undefined" ? DOCS.length : "DOCS 없음");
-  ok("색인 3300건 이상", typeof RECS !== "undefined" && RECS.length >= 3300, typeof RECS !== "undefined" ? RECS.length : "-");
+  ok("색인 3000건 이상", typeof RECS !== "undefined" && RECS.length >= 3000, typeof RECS !== "undefined" ? RECS.length : "-");
+  /* 서식(별지 서식)은 빈칸 채우는 양식이라 싣지 않는다. 별표만 남는다 */
+  ok("서식·별지는 싣지 않음", RECS.filter(r => r.kind === 1).length > 300 &&
+     DOCS.every(d => (d.별표 || []).every(b => /^별표/.test(b.번호))),
+     RECS.filter(r => r.kind === 1).length + "건");
   const guides = DOCS.filter(d => d.군 === "지침");
   ok("지침 17건을 단계 6으로 적재", guides.length === 17 &&
      guides.every(d => d.약호 === "지침" && d.단계 === 6 && d.조문.length > 0), guides.length + "건");
@@ -358,6 +362,14 @@
      document.querySelectorAll("#v-index .ho.d1").length + " / " +
      document.querySelectorAll("#v-index .ho.d2").length);
   ok("고른 보기를 기억함", localStorage.getItem("osh:idxFlow") === "true");
+  /* 이어 보기는 조문 화면 밖이라, 대상이 여럿인 위임 문구를 눌러도 그대로였다 */
+  const flowDel = $$("#v-index [data-delegate]");
+  if (flowDel) {
+    flowDel.click(); await wait(500);
+    ok("이어 보기의 위임 문구로 위임 목록", !$$("#reader").hidden && !!$$("#delegatelist .drow"), txt(flowDel));
+    history.back(); await wait(450);
+    ok("뒤로가기: 이어 보기 그대로", $$("#reader").hidden && !!$$("#v-index .fart"));
+  } else ok("이어 보기의 위임 문구로 위임 목록", false, "위임 단추 없음");
   $$("#v-index .fart .fh").click(); await wait(450);
   ok("이어 보기에서 조문으로", !$$("#reader").hidden);
   history.back(); await wait(450);
@@ -512,6 +524,63 @@
     ok("표에 빈 칸만 있지 않음", !!g && txt(g).length > 20, g ? txt(g).slice(0, 50) : "-");
     history.back(); await wait(400);
   }
+  // 고시·지침과 별표도 법률처럼 항·호·목의 층대로 — 한 덩이 글에 줄로만 갈려 온다
+  {
+    const nd = DOCS.findIndex(d => d.법령명 === "사업장 위험성평가에 관한 지침");
+    openRec(RECS.find(r => r.d === nd && r.no === "제3조").key, "new"); await wait(450);
+    ok("고시 조문의 항 번호를 법률처럼",
+       [...document.querySelectorAll("#rbody .art .hang > p > .hn")].map(e => txt(e)).join("") === "①②");
+    ok("고시 조문의 호를 들여씀", document.querySelectorAll("#rbody .hang .ho.d1").length === 8,
+       document.querySelectorAll("#rbody .hang .ho.d1").length + "개");
+    history.back(); await wait(400);
+    const gd = DOCS.findIndex(d => d.법령명 === "추락재해방지표준안전작업지침");
+    openRec(RECS.find(r => r.d === gd && r.no === "제2조").key, "new"); await wait(450);
+    ok("지침 조문도 항·호로", document.querySelectorAll("#rbody .hang").length === 2 &&
+       document.querySelectorAll("#rbody .ho.d1").length === 6,
+       document.querySelectorAll("#rbody .hang").length + "항 " + document.querySelectorAll("#rbody .ho.d1").length + "호");
+    history.back(); await wait(400);
+    openRec(RECS.find(r => DOCS[r.d].법령명 === "산업안전보건법 시행령" && r.no === "별표 4").key, "new"); await wait(450);
+    ok("별표 글도 호·목을 들여씀", document.querySelectorAll("#rbody .tbltext .ho.d1").length >= 8 &&
+       document.querySelectorAll("#rbody .tbltext .ho.d2").length >= 3,
+       document.querySelectorAll("#rbody .tbltext .ho.d1").length + " / " + document.querySelectorAll("#rbody .tbltext .ho.d2").length);
+    ok("기호 없는 줄은 앞 호의 글 밑에", !!$$("#rbody .tbltext .ho.cont") &&
+       getComputedStyle($$("#rbody .tbltext .ho.cont")).textIndent === "0px");
+    history.back(); await wait(400);
+    /* 줄을 갈라 층을 입혀도 원문 글자는 하나도 빠지거나 늘지 않는다 */
+    const strip = s => s.replace(/\s/g, "");
+    const lost = [];
+    for (const r of RECS) {
+      const box = document.createElement("div");
+      if (r.kind === 0) {
+        const a = DOCS[r.d].조문[r.i];
+        if (!a.본문 || a.본문.indexOf("\n") < 0) continue;
+        box.innerHTML = artBody(r, false);
+        const src = a.본문 + (a.참고 || "");
+        if (strip(box.textContent) !== strip(src)) lost.push(DOCS[r.d].약호 + " " + r.no);
+      } else {
+        for (const t of r.flow ? [r.body] : (r.ps || []).filter(p => p[0] === "t").map(p => p[1])) {
+          box.innerHTML = tblTextHTML(t);
+          if (strip(box.textContent) !== strip(t)) lost.push(DOCS[r.d].약호 + " " + r.no);
+        }
+      }
+    }
+    ok("층을 나눠도 글자는 그대로", lost.length === 0, lost.slice(0, 5).join(", "));
+  }
+
+  // <개정 2020.5.26> 같은 표시는 작고 흐리게
+  {
+    openRec(RECS.find(r => DOCS[r.d].법령명 === "산업안전보건법" && r.no === "제4조").key, "new"); await wait(450);
+    const amd = $$("#rbody .amd");
+    ok("개정 표시는 작고 흐리게", !!amd && txt(amd) === "<개정 2020.5.26>" &&
+       parseFloat(getComputedStyle(amd).fontSize) < parseFloat(getComputedStyle(amd.parentNode).fontSize),
+       amd ? txt(amd) : "-");
+    ok("개정 표시는 한 덩이로 줄을 넘김", !!amd && getComputedStyle(amd).display === "inline-block");
+    history.back(); await wait(400);
+    const probe = html => { const b = document.createElement("div"); b.innerHTML = amdHTML(esc(html)); return [...b.querySelectorAll(".amd")].map(e => e.textContent); };
+    ok("신설·삭제·시행일 표시도", probe("가 <신설 2019.1.15> 나 <삭제> 다 [시행일 : 2025. 1. 1.] 라 <2019.12.24>").length === 4);
+    ok("CAS 번호·표 번호는 그대로", probe("벤젠[71-43-2] <표 1> <16>").length === 0);
+  }
+
   const rawRec = RECS.find(r => r.kind === 1 && !r.flow && !r.ps);
   if (rawRec) {
     openRec(rawRec.key, "new"); await wait(450);
