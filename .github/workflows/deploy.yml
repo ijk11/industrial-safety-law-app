@@ -27,9 +27,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -69,9 +69,13 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-pages-artifact@v3
+      # v4 부터 점으로 시작하는 파일을 아티팩트에서 뺀다. 굽는 쪽이 만드는 web/.nojekyll
+      # 이 소리 없이 빠지지 않게 켜 둔다 (Actions 로 올리면 Jekyll 이 돌지 않아 없어도
+      # 동작하지만, 만든 파일이 사라지는 쪽을 기본값으로 두지 않는다).
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: web
+          include-hidden-files: true
 
   deploy:
     needs: build
@@ -81,7 +85,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       # 올리기가 성공했다고 앱이 열리는 건 아니다. 주소를 실제로 받아 본다.
       # -f + 재시도라서, Pages 가 아직 뜨는 중이면 기다렸다가 다시 받는다.
