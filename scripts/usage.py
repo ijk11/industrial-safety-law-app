@@ -12,11 +12,14 @@
     stats/daily-2026-09-04   그날 앱을 연 기기 수
     stats/ver-osh-abc123     그 판으로 갈아탄 기기 수
 
+홈 화면에 추가해 앱으로 연 것만 센다 — 브라우저 탭은 저장이 이레 뒤 지워져 같은 기기가
+되풀이해 잡히므로 아예 세지 않는다. 그래서 devices 와 install 은 이제 같은 것을 센다.
+
 같은 기기가 하루에 여러 번 열어도 하루 한 번만 센다. 만들면서 여는 것(localhost)과
 CI 는 세지 않는다. 사생활 보호 모드처럼 저장이 막힌 기기도 세지 않으므로,
 실제 이용자는 여기 숫자보다 조금 더 많다고 보면 된다.
 """
-import io, json, os, re, sys, urllib.request
+import datetime, io, json, os, re, sys, urllib.request
 
 PROJECT = "industrial-safety-law-app"
 KEY = "AIzaSyBYl4dZZvZCIFwQ2ybgDh_plwj6VO4IL6M"
@@ -27,6 +30,16 @@ URL = ("https://firestore.googleapis.com/v1/projects/%s/databases/(default)"
 def read():
     with urllib.request.urlopen(URL, timeout=30) as r:
         return json.loads(r.read().decode("utf-8")).get("documents", [])
+
+
+def kst(ts):
+    """Firestore 가 적어 둔 「만든 때」(UTC)를 한국 날짜로 끊는다.
+    날짜별 집계도 한국 시각으로 끊으므로 여기서도 같게 맞춘다."""
+    try:
+        t = datetime.datetime.strptime((ts or "")[:16], "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return ""
+    return (t + datetime.timedelta(hours=9)).strftime("%Y-%m-%d")
 
 
 def main():
@@ -45,7 +58,7 @@ def main():
         elif re.match(r"^daily-\d{4}-\d{2}-\d{2}$", name):
             daily[name[6:]] = n
         elif name.startswith("ver-"):
-            vers[name[4:]] = n
+            vers[name[4:]] = (n, kst(d.get("createTime", "")))
 
     if not daily:
         raise SystemExit("아직 집계된 날이 없습니다.")
@@ -60,15 +73,20 @@ def main():
     got = sum(daily[k] for k in order)
     print("\n  최근 %d일 합계 %d · 하루 평균 %.1f" % (len(order), got, got / len(order)))
 
-    print("\n한 번이라도 연 기기 %d · 그중 홈 화면에 설치를 마친 기기 %d"
+    print("\n한 번이라도 연 기기 %d · 홈 화면에 설치를 마친 기기 %d"
           % (one["devices"], one["install"]))
-    print("  기기 안 저장에 기대므로, 브라우저 자료를 지우면 새 기기로 센다.")
+    print("  홈 화면 앱으로 연 것만 센다 — 브라우저 탭으로 열어 본 사람은 빠진다.")
+    print("  그래서 두 숫자는 이제 같은 것을 센다 (바꾸기 전에 쌓인 몫만큼 벌어져 있다).")
+    print("  앱을 지우고 다시 추가하면 새 기기로 센다.")
     print("  사생활 보호 모드는 아예 세지 않으니 실제로는 이보다 조금 더 많다.")
 
     if vers:
         print("\n판마다 갈아탄 기기 수")
-        for k in sorted(vers, key=lambda x: -vers[x]):
-            print("  %-22s %4d" % (k, vers[k]))
+        # 날짜 내림차순 — 판 이름(해시)에는 차례가 없어 날짜가 유일한 순서다
+        for k in sorted(vers, key=lambda x: (vers[x][1], x), reverse=True):
+            cnt, at = vers[k]
+            print("  %-10s  %-14s %4d" % (at or "-", k, cnt))
+        print("  날짜는 그 판이 처음 잡힌 때다 — 올린 때가 아니라 첫 기기가 갈아탄 때다.")
     print()
 
 

@@ -869,26 +869,43 @@
       if (String(a[0]).indexOf("firestore") >= 0) { sent++; return Promise.resolve(new Response("{}")); }
       return real(...a);
     };
-    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
+    const KEYS = ["day", "dev", "ver", "inst"];
+    const clear = () => { for (const k of KEYS) localStorage.removeItem("osh:" + k); };
+
+    /* 브라우저 탭으로 열면 아예 세지 않는다. 사파리가 이레 뒤 저장한 것을 지워
+       같은 기기가 새 기기로 되풀이해 잡히므로, 세면 오히려 숫자를 흐린다 */
+    clear();
+    await count();
+    ok("브라우저 탭은 세지 않는다", sent === 0 && localStorage.getItem("osh:day") === null,
+       sent + "번");
+
+    /* 여기서부터는 홈 화면 앱으로 열린 것처럼 꾸민다 — 사파리가 그렇다고 알려 주는
+       표시를 흉내낸다. 설치 권함 검사들은 이미 앞에서 지나왔으므로 방해하지 않는다 */
+    Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
+    ok("홈 화면 앱으로 보인다", installed() === true);
+
+    clear();
     await count();
     const first = sent;
     await count(); await count();
-    /* 갈아타는 중이면 판 칸은 건너뛴다. 날짜와 기기 둘은 언제나 간다 */
-    ok("처음 열면 보낸다", first === 2 || first === 3, first + "번");
+    /* 날짜·기기·설치 셋은 언제나 가고, 갈아타는 중이면 판 칸만 건너뛴다 */
+    ok("처음 열면 보낸다", first === 3 || first === 4, first + "번");
     ok("같은 날 다시 열어도 보내지 않는다", sent === first, sent + "번");
     /* 날이 바뀌면 그날 칸만 하나 오른다. 기기 칸은 평생 한 번이라 다시 오르지 않는다 */
     localStorage.removeItem("osh:day");
     await count();
     ok("날이 바뀌어도 기기 칸은 그대로", sent === first + 1, (sent - first) + "번");
     window.fetch = real;
-    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
+    clear();
     /* 보내지 못한 날은 적어 두지 않는다 — 신호 없는 현장에서 연 날이 통째로 빠진다 */
     window.fetch = () => Promise.reject(new Error("끊김"));
     await count();
     window.fetch = real;
     ok("못 보내면 적어 두지 않는다", localStorage.getItem("osh:day") === null,
        String(localStorage.getItem("osh:day")));
-    for (const k of ["day", "dev", "ver"]) localStorage.removeItem("osh:" + k);
+    clear();
+    /* 꾸민 것을 되돌린다 — 뒤 검사가 홈 화면으로 오해하지 않게 */
+    delete navigator.standalone;
   }
   /* 현황판은 내가 숫자를 보는 딴 쪽이다. 앱의 오프라인 캐시에 섞이면
      쓰는 사람이 쓰지도 않을 것을 함께 내려받게 된다. */
