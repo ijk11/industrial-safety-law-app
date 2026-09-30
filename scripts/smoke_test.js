@@ -663,8 +663,8 @@
      !$$("#v-adv .sec") && /인터넷 없이 찾습니다/.test(txt($$("#v-adv .advnote"))),
      txt($$("#v-adv .advnote")).slice(0, 34));
   ok("소개에 법적 효력을 밝힘", /법적 효력은 원문에 있습니다/.test(txt($$("#v-adv .advnote"))));
-  ok("첫 화면은 벌칙 모아보기를 맨 위에 둔 네 갈래",
-     document.querySelectorAll("#v-adv .row").length === 4 &&
+  ok("첫 화면은 벌칙 모아보기를 맨 위에 둔 다섯 갈래",
+     document.querySelectorAll("#v-adv .row").length === 5 &&
      $$("#v-adv .row").dataset.advGo === "pen" && !$$("#v-adv .artgrid") && !$$("#v-adv .band"),
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
   /* 기초 법지식은 걷어냈다. 자취가 남으면 눌러도 빈 화면이 뜬다 */
@@ -691,7 +691,7 @@
   history.back(); await wait(450);
   ok("뒤로가기: 모아보기로 복귀", !!$$("#v-adv .artgrid"));
   history.back(); await wait(500);
-  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#v-adv .crumb"));
+  ok("뒤로가기: 기타 첫 화면으로", document.querySelectorAll("#v-adv .row").length === 5 && !$$("#v-adv .crumb"));
 
   /* 상시근로자 기준표는 정리한 것이라, 근거가 실제 조문에 닿는지가 생명이다.
      법이 개정돼 조문 번호가 바뀌면 여기서 먼저 걸린다. */
@@ -732,13 +732,13 @@
   ok("근거를 눌러 조문으로", !$$("#reader").hidden, want + " → " + txt($$("#rwho")) + " " + txt($$("#rno")).slice(0, 16));
   history.back(); await wait(450);
   $$("#advback").click(); await wait(500);
-  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 4);
+  ok("빵부스러기로 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 5);
   /* 연락처가 뒤에 붙을 수 있다. 이름이 밝혀져 있는지만 본다 */
   ok("기타 탭 아래에 만든 사람", /^제작: 김익중/.test(txt($$("#v-adv .by"))), txt($$("#v-adv .by")));
 
   // 랜덤으로 조문 보기 — 한 장씩 무작위로, 옆으로 밀어 넘긴다
   ok("규모별 의무 바로 아래에 랜덤으로 조문 보기",
-     [...document.querySelectorAll("#v-adv .row")].map(e => e.dataset.advGo).join(",") === "pen,scale,rand,ver",
+     [...document.querySelectorAll("#v-adv .row")].map(e => e.dataset.advGo).join(",") === "pen,scale,rand,ver,set",
      [...document.querySelectorAll("#v-adv .row .t")].map(e => txt(e)).join(" / "));
   $$('#v-adv [data-adv-go="rand"]').click(); await wait(500);
   ok("랜덤으로 조문 보기로 들어감", /랜덤으로 조문 보기/.test(txt($$("#v-adv .crumb"))) && !!$$("#rndcard"));
@@ -833,7 +833,7 @@
     ok("기본 범위로 되돌림", JSON.stringify(store.get("randScope")) === '["법"]');
   }
   history.back(); await wait(500);
-  ok("뒤로가기: 랜덤에서 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 4 && !$$("#rndcard"));
+  ok("뒤로가기: 랜덤에서 기타 첫 화면", document.querySelectorAll("#v-adv .row").length === 5 && !$$("#rndcard"));
   ok("기본 범위 안내", /^산업안전보건법 조문 [\d,]+개에서/.test(txt($$('#v-adv [data-adv-go="rand"] .s'))),
      txt($$('#v-adv [data-adv-go="rand"] .s')));
 
@@ -853,6 +853,85 @@
   ok("개조식으로 짧게", items.every(li => txt(li).length <= 40 && !/입니다|습니다/.test(txt(li))),
      items.map(li => txt(li).length).join(","));
   $$("#advback").click(); await wait(500);
+
+  // 설정 — 고른 것이 실제로 먹는지, 손대지 않으면 예전과 같은지까지 본다
+  {
+    const KS = ["order", "fs", "tblsize", "theme", "hl"];
+    const had = {};
+    for (const k of KS) had[k] = localStorage.getItem("osh:" + k);
+
+    ok("기타 맨 아래에 설정", !!$$('#v-adv [data-adv-go="set"]'),
+       txt($$('#v-adv [data-adv-go="set"] .t')));
+    $$('#v-adv [data-adv-go="set"]').click(); await wait(400);
+    ok("설정으로 들어감", /설정/.test(txt($$("#v-adv .crumb"))));
+    const heads = [...document.querySelectorAll("#v-adv .setsec > h3")].map(e => txt(e));
+    ok("세 갈래로 나눔", heads.join(" / ") === "검색 순서 / 글자 크기 / 화면", heads.join(" / "));
+
+    /* 손대지 않았으면 예전 위계를 그대로 쓴다. 고르지 않은 사람의 결과가 바뀌면 안 된다 */
+    ok("설정 전에는 위계를 그대로", !ORDER.custom && rankOf(0) === DOCS[0].단계 * 2,
+       "rankOf " + rankOf(0) + " · 단계*2 " + DOCS[0].단계 * 2);
+    ok("법률이 맨 위에 놓임", ORDER.list[0] === "법률", ORDER.list.slice(0, 4).join(","));
+    ok("맨 위는 위로 못 올림", $$("#v-adv .ordrow .mv").disabled);
+    ok("되돌리기는 아직 없음", !$$("#ordreset"));
+
+    /* 맨 아래 묶음을 맨 위까지 올려 본다 */
+    const last = ORDER.list[ORDER.list.length - 1];
+    for (let i = ORDER.list.length - 1; i > 0; i--) {
+      $$('#v-adv [data-mv="up"][data-g="' + last + '"]').click(); await wait(60);
+    }
+    ok("올린 묶음이 맨 위로", ORDER.list[0] === last, ORDER.list.slice(0, 3).join(","));
+    const di = DOCS.findIndex(d => d.군 === last);
+    ok("고른 순서가 점수에 든다", ORDER.custom && rankOf(di) === 0, "rankOf " + rankOf(di));
+    ok("고른 것을 적어 둠", JSON.parse(localStorage.getItem("osh:order"))[0] === last);
+    ok("검색은 그대로 돌아감", search("안전").length > 0, search("안전").length + "건");
+    ok("올린 묶음이 결과 앞에 옴", DOCS[search("안전")[0].d].군 === last,
+       DOCS[search("안전")[0].d].군);
+
+    ok("되돌리기 단추가 생김", !!$$("#ordreset"));
+    $$("#ordreset").click(); await wait(300);
+    ok("되돌리면 위계로", !ORDER.custom && rankOf(0) === DOCS[0].단계 * 2);
+
+    /* 글자 크기 */
+    const pick = (key, v) => $$('#v-adv [data-set="' + key + '"][data-v="' + v + '"]');
+    pick("fs", "19").click(); await wait(200);
+    ok("본문 글자 크기가 먹음",
+       document.documentElement.style.getPropertyValue("--fs") === "19px" && store.get("fs", 0) === 19,
+       document.documentElement.style.getPropertyValue("--fs"));
+    pick("tb", "16").click(); await wait(200);
+    ok("표 글자 크기가 먹음",
+       document.documentElement.style.getPropertyValue("--tblsize") === "16px",
+       document.documentElement.style.getPropertyValue("--tblsize"));
+
+    /* 테마 — "기기 따라" 는 표시를 떼야 기기 설정을 따르는 규칙이 산다 */
+    pick("th", "dark").click(); await wait(200);
+    ok("어둡게가 먹음", document.documentElement.getAttribute("data-theme") === "dark");
+    pick("th", "auto").click(); await wait(200);
+    ok("기기 따라는 표시를 뗀다", !document.documentElement.getAttribute("data-theme"),
+       String(document.documentElement.getAttribute("data-theme")));
+
+    /* 형광펜 기본값 */
+    ok("형광펜은 기본이 켬", $$('#v-adv [data-sw="hl"]').getAttribute("aria-pressed") === "true");
+    $$('#v-adv [data-sw="hl"]').click(); await wait(200);
+    search("추락");
+    ok("끄면 조문에 형광펜이 없다", hlToks.length === 0, JSON.stringify(hlToks));
+    $$('#v-adv [data-sw="hl"]').click(); await wait(200);
+    search("추락");
+    ok("켜면 다시 칠한다", hlToks.length > 0, JSON.stringify(hlToks));
+
+    /* 검사가 고른 것을 남기면 뒤 검사가 엉킨다. 있던 대로 되돌린다 */
+    for (const k of KS) {
+      if (had[k] === null) localStorage.removeItem("osh:" + k);
+      else localStorage.setItem("osh:" + k, had[k]);
+    }
+    ORDER = groupOrder();
+    document.documentElement.style.removeProperty("--fs");
+    document.documentElement.style.removeProperty("--tblsize");
+    document.documentElement.removeAttribute("data-theme");
+    $$("#advback").click(); await wait(400);
+    ok("설정에서 기타 첫 화면으로",
+       document.querySelectorAll("#v-adv .row").length === 5 && !$$("#v-adv .crumb"));
+  }
+
   document.querySelector('nav.tabs button[data-tab="search"]').click(); await wait(300);
 
   // 얼마나 쓰이는지 세기 — 보내는 것이 숫자 하나뿐인지가 핵심이다

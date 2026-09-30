@@ -39,7 +39,7 @@ __HEAD_EXTRA__
 body{
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--font-ui);
-  font-size:15px; line-height:1.6;
+  font-size:var(--fs,15px); line-height:1.6;
   -webkit-text-size-adjust:100%; word-break:keep-all; overflow-wrap:anywhere;
 }
 button,input{font:inherit;color:inherit}
@@ -166,6 +166,38 @@ mark{background:var(--mark);color:var(--mark-ink);border-radius:2px;padding:0 1p
 .row .arw{color:var(--ink-3);flex:none}
 .crumb{display:flex;align-items:center;gap:6px;padding:12px 2px 6px;font-size:12.5px;color:var(--ink-3)}
 .crumb button{color:var(--accent);font-weight:700}
+
+/* ---- 설정 ---- */
+.setsec{margin:0 0 20px}
+.setsec > h3{margin:0 0 7px;padding:0 2px;font-size:12.5px;font-weight:700;color:var(--ink-3);letter-spacing:.02em}
+.setsec > p{margin:8px 2px 0;font-size:11.5px;line-height:1.6;color:var(--ink-3)}
+.setbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 13px}
+.setrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:0}
+.setrow .lb{flex:1;min-width:0;font-size:13.5px}
+.setrow .lb small{display:block;font-size:11px;color:var(--ink-3);margin-top:2px}
+.pick{display:flex;gap:5px;flex:none}
+.pick button{padding:6px 10px;border:1px solid var(--line);border-radius:8px;
+  background:var(--surface-2);font-size:12.5px;color:var(--ink-2)}
+.pick button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+/* 켬·끔 — 손가락으로 누르는 자리라 44px 을 넘기지 않되 넉넉히 둔다 */
+.sw{flex:none;width:46px;height:28px;border-radius:14px;background:var(--surface-2);
+  border:1px solid var(--line-2);position:relative;transition:background .15s}
+.sw i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:var(--surface);box-shadow:var(--shadow);transition:left .15s}
+.sw[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.sw[aria-pressed="true"] i{left:20px}
+/* 검색 순서 — 폰에서 끌어 옮기기는 손이 미끄러진다. 위아래 단추로 옮긴다 */
+.ordrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ordrow:last-child{border-bottom:0}
+.ordrow .rk{flex:none;width:1.5em;font-size:12px;font-weight:700;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.ordrow .nm{flex:1;min-width:0;font-size:13.5px}
+.ordrow .nm small{color:var(--ink-3);font-size:11px;margin-left:5px;font-variant-numeric:tabular-nums}
+.ordrow .mv{flex:none;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;
+  background:var(--surface-2);color:var(--ink-2);font-size:11px;line-height:1}
+.ordrow .mv:disabled{opacity:.28}
+.setreset{margin:10px 2px 0;font-size:12px;color:var(--accent);font-weight:700}
 .chap{margin:16px 0 7px;font-family:var(--font-serif);font-weight:600;font-size:13.5px;color:var(--ink-2);
   border-left:3px solid var(--accent);padding-left:8px}
 .artgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
@@ -209,7 +241,7 @@ mark.cur{background:var(--accent);color:var(--accent-ink)}
 .rbody{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:18px 16px calc(24px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling:touch}
 .rwrap{max-width:62ch;margin:0 auto}
-.rtitle{font-family:var(--font-serif);font-weight:700;font-size:21px;line-height:1.4;margin:0 0 3px;text-wrap:balance}
+.rtitle{font-family:var(--font-serif);font-weight:700;font-size:calc(var(--fs,15px) * 1.4);line-height:1.4;margin:0 0 3px;text-wrap:balance}
 .rchap{font-size:12px;color:var(--ink-3);margin-bottom:7px}
 .rwhen{display:inline-block;margin:0 0 16px;padding:3px 10px;border-radius:20px;
   background:var(--surface-2);color:var(--ink-2);font-size:11.5px;font-weight:600;
@@ -220,7 +252,7 @@ mark.cur{background:var(--accent);color:var(--accent-ink)}
   font-size:13.5px;color:var(--ink-2);white-space:normal}
 .hang{margin:0 0 14px}
 .hang .hn{font-weight:700;color:var(--accent);margin-right:3px}
-.ho{margin:7px 0 0 14px;padding-left:2px;color:var(--ink-2);font-size:15px;line-height:1.72;white-space:pre-line}
+.ho{margin:7px 0 0 14px;padding-left:2px;color:var(--ink-2);font-size:var(--fs,15px);line-height:1.72;white-space:pre-line}
 /* 목의 층을 들여쓴다 — 1. → 가. → 1) → 가). 긴 조문에서 어디에 걸린 말인지가
    눈에 잡힌다. 접힌 줄은 기호 밑이 아니라 글 밑에 오도록 매단다. */
 .ho.d1{margin-left:14px}
@@ -544,6 +576,7 @@ let idxDoc = null, views = [];
 let advPage = null;   /* 기타 탭에서 들어와 있는 갈래 (null=첫 화면) */
 let savedOpen = store.get("savedOpen", true);   /* 저장한 조문을 펴 두었는지 */
 let hlToks = [];   /* 조문 안에 남겨 둘 형광펜 낱말 */
+let ORDER = { list: [], custom: false };   /* 검색에서 어느 법령을 앞에 둘지 — 설정에서 고른다 */
 let BASIS = "", NEWEST = "";
 
 /* ---------------- 데이터 펼치기 ---------------- */
@@ -639,6 +672,33 @@ const ALIAS = [
   [/^(안전보건규칙|기준규칙|기준|안보규칙|규칙)\s*/, "산업안전보건기준에 관한 규칙"]
 ];
 
+/* ---------------- 검색에서 어느 법령을 앞에 둘지 ----------------
+   법령 묶음(군)을 위아래로 옮겨 정한다. 설정에서 손대지 않으면 예전 그대로
+   법령 위계(단계)를 쓴다 — 고르지 않은 사람의 결과가 바뀌면 안 된다.
+
+   한 번 고른 뒤에는 칸마다 6점을 준다. 위계는 2점이었는데, 그건 앱이 정한
+   기본값이라 제목이 맞는 조문(40점)에 밀려도 그만이었다. 사람이 일부러 뒤로
+   보낸 법령은 제목이 맞는다는 이유만으로 앞에 올라오면 고른 뜻이 없어진다. */
+function groupOrder() {
+  const lv = new Map();
+  for (const d of DOCS) if (!lv.has(d.군)) lv.set(d.군, d.단계);
+  const base = [...lv.keys()].sort((a, b) => lv.get(a) - lv.get(b));
+  const mine = store.get("order", null);
+  if (!Array.isArray(mine) || !mine.length) return { list: base, custom: false };
+  /* 고른 뒤에 담긴 법령이 늘거나 줄 수 있다. 없어진 것은 버리고 새것은 뒤에 붙인다 */
+  const list = mine.filter(g => base.indexOf(g) >= 0);
+  for (const g of base) if (list.indexOf(g) < 0) list.push(g);
+  return { list, custom: true };
+}
+
+/* 낮을수록 앞이다 */
+function rankOf(di) {
+  const d = DOCS[di];
+  if (!ORDER.custom) return d.단계 * 2;
+  const at = ORDER.list.indexOf(d.군);
+  return (at < 0 ? ORDER.list.length : at) * 6;
+}
+
 function search(qRaw) {
   const q = qRaw.trim();
   if (!q) return [];
@@ -664,12 +724,12 @@ function search(qRaw) {
     const want = mArt ? "제" + mArt[1] + "조" + (mArt[2] ? "의" + mArt[2] : "")
                       : "별표 " + mTbl[1] + (mTbl[2] ? "의" + mTbl[2] : "");
     jump = pool.filter(r => r.no === want && (!docName || DOCS[r.d].법령명 === docName));
-    jump.sort((a, b) => DOCS[a.d].단계 - DOCS[b.d].단계);
+    jump.sort((a, b) => rankOf(a.d) - rankOf(b.d));
   }
 
   const toks = q.toLowerCase().split(/\s+/).filter(Boolean);
   /* 번호로 바로 찾아간 때는 조문을 눈으로 좇을 일이 없어 형광펜이 방해만 된다 */
-  hlToks = (mArt || mTbl) ? [] : toks;
+  hlToks = (mArt || mTbl || !store.get("hl", true)) ? [] : toks;
   if (/[a-z]/.test(q.toLowerCase())) prepDeep();
 
   const out = [];
@@ -680,7 +740,7 @@ function search(qRaw) {
       if (r.title.toLowerCase().indexOf(t) >= 0) inTitle++;
     }
     if (!ok) continue;
-    r._score = inTitle * 40 + (r.kind === 0 ? 20 : 0) - DOCS[r.d].단계 * 2 - (r.del ? 30 : 0);
+    r._score = inTitle * 40 + (r.kind === 0 ? 20 : 0) - rankOf(r.d) - (r.del ? 30 : 0);
     out.push(r);
   }
   out.sort((a, b) => b._score - a._score || a.d - b.d || a.i - b.i);
@@ -1085,6 +1145,8 @@ function renderAdv() {
         rndScopeLabel() + " 조문 " + rndPool().length.toLocaleString() + "개에서 한 장씩 · 옆으로 넘기기") +
       advMenu("ver", "법령 판 · 업데이트",
         "기준일 " + (BASIS || "-") + " · 담긴 법령 " + DOCS.length + "건 · 새 판 확인") +
+      advMenu("set", "설정",
+        "검색 순서 · 글자 크기 · 테마 · 형광펜") +
       "</ul>" +
       '<p class="by">제작: 김익중(kij@kosha.or.kr)</p>';
     return;
@@ -1094,10 +1156,12 @@ function renderAdv() {
   h += advPage === "pen" ? penPage()
      : advPage === "scale" ? scaleHTML()
      : advPage === "rand" ? rndPage()
+     : advPage === "set" ? setPage()
      : verPage();
   v.innerHTML = h;
   if (advPage === "ver") mountVersion();
   if (advPage === "rand") mountRnd();
+  if (advPage === "set") mountSet();
   v.querySelectorAll("[data-adv]").forEach(b => b.onclick = () => { advWhat = b.dataset.adv; renderAdv(); });
   v.querySelectorAll("[data-sc]").forEach(b => b.onclick = () => {
     const box = $("#" + b.dataset.sc);
@@ -1106,11 +1170,121 @@ function renderAdv() {
   });
 }
 
-const ADV_NAME = { pen: "벌칙 모아보기", scale: "규모별 의무", rand: "랜덤으로 조문 보기", ver: "법령 판 · 업데이트" };
+const ADV_NAME = { pen: "벌칙 모아보기", scale: "규모별 의무", rand: "랜덤으로 조문 보기",
+                   ver: "법령 판 · 업데이트", set: "설정" };
 
 function advMenu(id, title, sub) {
   return '<button class="row" data-adv-go="' + id + '"><span class="grow">' +
     '<span class="t">' + esc(title) + '</span><br><span class="s">' + esc(sub) + "</span></span>" + ARW + "</button>";
+}
+
+
+/* ---------------- 설정 ----------------
+   검색 순서·글자 크기·테마·형광펜을 한자리에서 고른다. 고른 것은 기기 안에만
+   남고 서버로 가지 않는다. 앞서 흩어져 있던 것(표 글자 크기는 별표 안에서만,
+   테마는 머리의 단추만)도 여기서 함께 닿게 한다. */
+function setPage() {
+  const fs = store.get("fs", 15), tb = store.get("tblsize", 12);
+  const th = store.get("theme", "auto"), hl = store.get("hl", true);
+  return '<div class="setsec"><h3>검색 순서</h3><div class="setbox">' +
+      ORDER.list.map(ordRow).join("") + "</div>" +
+      (ORDER.custom ? '<button class="setreset" id="ordreset">법·령·칙 차례로 되돌리기</button>' : "") +
+      '<p>위에 둔 법령이 검색 결과에서 먼저 나옵니다. 손대지 않으면 ' +
+        '법·령·칙 차례를 그대로 씁니다.</p></div>' +
+
+    '<div class="setsec"><h3>글자 크기</h3><div class="setbox">' +
+      setPick("본문", "조문·항·호를 읽는 글자", "fs", fs,
+              [[13, "작게"], [15, "보통"], [17, "크게"], [19, "더 크게"]]) +
+      setPick("표·별표", "괘선표 안의 글자", "tb", tb,
+              [[11, "작게"], [12, "보통"], [14, "크게"], [16, "더 크게"]]) +
+    "</div></div>" +
+
+    '<div class="setsec"><h3>화면</h3><div class="setbox">' +
+      setPick("테마", "", "th", th, [["light", "밝게"], ["dark", "어둡게"], ["auto", "기기 따라"]]) +
+      setSwitch("조문 속 형광펜", "조문을 열었을 때 찾던 낱말을 칠해 둡니다", "hl", hl) +
+    "</div></div>" +
+    '<p class="by">고른 것은 이 기기에만 남습니다. 서버로 가지 않습니다.</p>';
+}
+
+function ordRow(g, i) {
+  /* 법령 수가 아니라 검색에 걸리는 건수를 적는다. 대부분 법령이 한 건씩이라
+     "1건" 만 늘어서면 어느 묶음이 무거운지 알 길이 없다 */
+  const n = RECS.filter(r => DOCS[r.d].군 === g).length;
+  const mv = (dir, mark, off) =>
+    '<button class="mv" data-mv="' + dir + '" data-g="' + esc(g) + '"' + (off ? " disabled" : "") +
+    ' aria-label="' + esc(g) + (dir === "up" ? " 위로" : " 아래로") + '">' + mark + "</button>";
+  return '<div class="ordrow"><span class="rk">' + (i + 1) + "</span>" +
+    '<span class="nm">' + esc(g) + "<small>" + n.toLocaleString() + "개</small></span>" +
+    mv("up", "▲", i === 0) + mv("down", "▼", i === ORDER.list.length - 1) + "</div>";
+}
+
+function setPick(label, sub, key, cur, opts) {
+  return '<div class="setrow"><span class="lb">' + esc(label) +
+    (sub ? "<small>" + esc(sub) + "</small>" : "") + '</span><span class="pick">' +
+    opts.map(([v, t]) => '<button data-set="' + key + '" data-v="' + esc(String(v)) + '"' +
+      (String(v) === String(cur) ? ' class="on"' : "") + ">" + esc(t) + "</button>").join("") +
+    "</span></div>";
+}
+
+function setSwitch(label, sub, key, on) {
+  return '<div class="setrow"><span class="lb">' + esc(label) +
+    (sub ? "<small>" + esc(sub) + "</small>" : "") + "</span>" +
+    '<button class="sw" data-sw="' + key + '" aria-pressed="' + (on ? "true" : "false") +
+      '" aria-label="' + esc(label) + '"><i></i></button></div>';
+}
+
+/* 검색 순서나 형광펜을 바꾸면 이미 뽑아 둔 결과가 옛 기준이라 다시 세운다 */
+function research() {
+  if (!$("#q").value.trim()) return;
+  shown = 60;
+  hits = search($("#q").value);
+  renderSearch();
+}
+
+function applySet(key, v) {
+  if (key === "fs") {
+    store.set("fs", +v);
+    document.documentElement.style.setProperty("--fs", +v + "px");
+  } else if (key === "tb") {
+    store.set("tblsize", +v);
+    document.documentElement.style.setProperty("--tblsize", +v + "px");
+  } else if (key === "th") {
+    store.set("theme", v);
+    /* "기기 따라" 는 아무 표시도 달지 않는다 — 그러면 기기 설정을 따르는 규칙이 산다 */
+    if (v === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+  }
+}
+
+function mountSet() {
+  const v = $("#v-adv");
+  v.querySelectorAll("[data-mv]").forEach(b => b.onclick = () => {
+    const i = ORDER.list.indexOf(b.dataset.g);
+    const j = b.dataset.mv === "up" ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= ORDER.list.length) return;
+    ORDER.list.splice(j, 0, ORDER.list.splice(i, 1)[0]);
+    ORDER.custom = true;
+    store.set("order", ORDER.list);
+    renderAdv();
+    research();
+  });
+  const rs = $("#ordreset");
+  if (rs) rs.onclick = () => {
+    store.set("order", null);
+    ORDER = groupOrder();
+    renderAdv();
+    research();
+  };
+  v.querySelectorAll("[data-set]").forEach(b => b.onclick = () => {
+    applySet(b.dataset.set, b.dataset.v);
+    renderAdv();
+  });
+  v.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => {
+    const on = b.getAttribute("aria-pressed") !== "true";
+    store.set(b.dataset.sw, on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    research();
+  });
 }
 
 function penPage() {
@@ -1417,6 +1591,11 @@ function rndSwipe(card) {
    언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
    내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
 const CHANGES = [
+  ["2026-09-30", ["기타 탭에 설정 추가",
+                  "검색에서 어느 법령을 앞에 둘지 정함",
+                  "본문·표 글자 크기 고르기",
+                  "테마에 기기 설정 따라가기 추가",
+                  "조문 속 형광펜 기본값 고르기"]],
   ["2026-09-15", ["고시·지침·별표도 항·호·목을 층대로 표시",
                   "<개정 …> 같은 표시를 작고 흐리게",
                   "서식·별지 서식 삭제 (별표만 남김)",
@@ -2371,8 +2550,12 @@ function start() {
   $("#stamp").textContent = BASIS ? "업데이트 " + BASIS : "오프라인";
   const z = store.get("tblsize", 0);
   if (z) document.documentElement.style.setProperty("--tblsize", z + "px");
+  const fz = store.get("fs", 0);
+  if (fz) document.documentElement.style.setProperty("--fs", fz + "px");
+  /* "auto" 는 표시를 달지 않는다 — 달아 버리면 기기 설정을 따르는 규칙이 죽는다 */
   const th = store.get("theme", null);
-  if (th) document.documentElement.setAttribute("data-theme", th);
+  if (th && th !== "auto") document.documentElement.setAttribute("data-theme", th);
+  ORDER = groupOrder();
 
   $("#q").addEventListener("input", onQuery);
   $("#clear").onclick = () => { $("#q").value = ""; $("#q").focus(); onQuery(); };
