@@ -1078,6 +1078,58 @@
   ok("취소하면 닫힘", $$("#share").hidden);
   history.back(); await wait(400);
 
+  // 조문 바꿔 보기 — 보던 조문으로 한 번에, 읽던 자리에서 이어 읽기
+  {
+    const key = (short, no) => RECS.find(r => DOCS[r.d].약호 === short && r.no === no && r.kind === 0).key;
+    const k1 = key("법", "제2조"), k2 = key("기준", "제42조");
+    const keptSaved = saved.slice();
+    openRec(k1, "new"); await wait(450);
+    ok("조문 머리에 바꾸기 표시", /▾/.test($$("#rno").textContent), txt($$("#rno")).slice(0, 24));
+    $$("#rbody").scrollTop = 300; await wait(200);
+    const where = $$("#rbody").scrollTop;
+    ok("긴 조문이라 자리를 옮길 수 있음", where > 100, where + "px");
+    openRec(k2, "new"); await wait(450);
+    ok("처음 여는 조문은 맨 위에서", $$("#rbody").scrollTop === 0);
+    $$("#rbody").scrollTop = 120; await wait(200);
+
+    /* 저장해 둔 조문도 건너뛸 자리에 함께 둔다 */
+    const k3 = key("중대재해", "제4조");
+    saved = [k3].concat(saved.filter(k => k !== k3));
+    $$("#rno").click(); await wait(300);
+    ok("조문 머리를 눌러 바꾸기 창", !$$("#switch").hidden);
+    const rows = [...document.querySelectorAll("#switch .swrow")];
+    ok("지금 보는 조문은 「지금」으로", rows[0].classList.contains("now") && !rows[0].dataset.sw &&
+       /지금/.test(txt(rows[0])), txt(rows[0]).slice(0, 30));
+    ok("바로 앞에 보던 조문이 둘째 줄", rows[1] && rows[1].dataset.sw === k1, rows[1] ? txt(rows[1]).slice(0, 24) : "-");
+    ok("저장한 조문도 건너뛸 수 있게", rows.some(e => e.dataset.sw === k3 && /저장/.test(txt(e))));
+    rows.find(e => e.dataset.sw === k1).click(); await wait(550);
+    ok("고른 조문으로 건너뜀", $$("#switch").hidden && cur.key === k1, txt($$("#rno")).slice(0, 20));
+    ok("되돌아오면 읽던 자리에서", Math.abs($$("#rbody").scrollTop - where) <= 4, $$("#rbody").scrollTop + "px");
+    history.back(); await wait(500);
+    ok("건너뛴 것도 뒤로가기로 되짚음", !$$("#reader").hidden && cur.key === k2, txt($$("#rno")).slice(0, 20));
+    ok("되짚어도 읽던 자리에서", Math.abs($$("#rbody").scrollTop - 120) <= 4, $$("#rbody").scrollTop + "px");
+
+    /* 조문 화면을 통째로 나갔다 다시 들어와도 자리는 남아 있다 */
+    $$("#rwho").click(); await wait(550);
+    ok("법령명을 눌러 조문 화면을 나감", $$("#reader").hidden);
+    openRec(k2, "new"); await wait(450);
+    ok("다시 열어도 읽던 자리에서", Math.abs($$("#rbody").scrollTop - 120) <= 4, $$("#rbody").scrollTop + "px");
+
+    $$("#rno").click(); await wait(250);
+    $$("#swno").click(); await wait(250);
+    ok("닫기로 닫힘", $$("#switch").hidden);
+    $$("#rno").click(); await wait(250);
+    $$("#switch").click(); await wait(250);
+    ok("바깥을 눌러도 닫힘", $$("#switch").hidden);
+    $$("#rno").click(); await wait(250);
+    history.back(); await wait(500);
+    ok("뒤로가기에 창이 남지 않음", $$("#switch").hidden);
+    saved = keptSaved;
+    localStorage.setItem("osh:saved", JSON.stringify(saved));
+    if (!$$("#reader").hidden) { $$("#rwho").click(); await wait(500); }
+    await type("");
+  }
+
   // 글꼴
   try {
     await document.fonts.ready;

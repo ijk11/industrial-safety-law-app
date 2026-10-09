@@ -280,7 +280,8 @@ mark.cur{background:var(--accent);color:var(--accent-ink)}
   .rtop{gap:0;padding-left:4px;padding-right:4px}
   .rtop .iconbtn{width:37px}
 }
-.rtop .who .b{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+.rtop .who .b{width:100%;padding:0;border:0;background:none;font:inherit;
+  font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rbody{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:18px 16px calc(24px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling:touch}
@@ -478,6 +479,19 @@ nav.tabs svg{width:20px;height:20px}
   font-family:var(--font-ui);font-size:12px;line-height:1.65;color:var(--ink-2);
   white-space:pre-wrap;overflow-wrap:anywhere}
 
+/* 조문 바꿔 보기 — 방금까지 보던 조문으로 한 번에 건너뛴다 */
+.rtop .who .b .sw{margin-left:4px;font-size:10px;font-weight:400;color:var(--ink-3)}
+.swlist{max-height:46vh;overflow-y:auto;margin:0 0 13px;-webkit-overflow-scrolling:touch}
+.swrow{width:100%;display:flex;align-items:center;gap:9px;padding:10px 6px;text-align:left;
+  border-bottom:1px solid var(--line)}
+.swrow:last-child{border-bottom:0}
+.swrow .grow{flex:1;min-width:0}
+.swrow .t{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.45}
+.swrow .s{font-size:11.5px;color:var(--ink-3)}
+.swrow .mk{flex:none;font-size:11px;font-weight:700;color:var(--ink-3)}
+.swrow.now{background:var(--surface-2);border-radius:9px;border-bottom-color:transparent}
+.swrow.now .mk{color:var(--accent)}
+
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;transform:translateX(-50%);z-index:70;
   bottom:calc(70px + env(safe-area-inset-bottom));max-width:86%;
@@ -546,7 +560,7 @@ nav.tabs svg{width:20px;height:20px}
     <button class="iconbtn" id="rback" aria-label="뒤로">
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <div class="who"><button class="a exit" id="rwho" title="목록으로 나가기"></button><div class="b" id="rno"></div></div>
+    <div class="who"><button class="a exit" id="rwho" title="목록으로 나가기"></button><button class="b" id="rno" aria-haspopup="dialog" title="다른 조문으로 바꾸기"></button></div>
     <button class="iconbtn" id="rfind" aria-label="이 조문에서 찾기" title="이 조문에서 찾기">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
     </button>
@@ -603,6 +617,16 @@ nav.tabs svg{width:20px;height:20px}
   </div>
 </div>
 
+<div class="sheet" id="switch" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="swtitle">
+    <h2 id="swtitle">조문 바꾸기</h2>
+    <div class="swlist" id="swlist"></div>
+    <div class="btns">
+      <button id="swno">닫기</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 
@@ -619,6 +643,7 @@ let DOCS = [], RECS = [], BYKEY = new Map();
 let saved = store.get("saved", []), recent = store.get("recent", []);
 let filter = "전체", shown = 60, hits = [], tab = "search";
 let idxDoc = null, views = [];
+let seenAt = new Map();   /* 조문마다 어디까지 읽었는지 (이번 실행 동안) */
 let advPage = null;   /* 기타 탭에서 들어와 있는 갈래 (null=첫 화면) */
 let savedOpen = store.get("savedOpen", true);   /* 저장한 조문을 펴 두었는지 */
 let hlToks = [];   /* 조문 안에 남겨 둘 형광펜 낱말 */
@@ -1646,6 +1671,8 @@ function rndSwipe(card) {
    언제 받아온 원문인지와 앱이 무엇이 바뀌었는지를 한자리에서 본다.
    내역은 손으로 적는다 — 커밋 글은 사용자가 읽을 말이 아니다. 개조식으로 짧게. */
 const CHANGES = [
+  ["2026-10-09", ["조문 머리를 눌러 보던 조문으로 바꾸기",
+                  "조문마다 읽던 자리를 기억 (이번 실행 동안)"]],
   ["2026-09-30", ["기타 탭에 설정 추가",
                   "검색에서 어느 법령을 앞에 둘지 정함",
                   "본문·표 글자 크기 고르기",
@@ -2055,6 +2082,7 @@ function articleText(text, r, part) {
 function showDelegation(id, query = "") {
   const link = cur && (DOCS[cur.d].조문[cur.i].위임 || [])[id];
   if (!link) return;
+  keepWhere();
   delegation = id;
   const targets = link.대상.map(k => BYKEY.get(k)).filter(Boolean);
   $("#rno").textContent = cur.no + " · 위임받은 조문";
@@ -2079,16 +2107,24 @@ function showDelegation(id, query = "") {
   input.oninput = render; render(); $("#rbody").scrollTop = 0;
 }
 
+/* 읽던 자리를 적어 둔다. 조문을 떠나는 그 자리에서 적는다 — 스크롤 사건에 기대면
+   화면을 그리지 않는 동안에는 사건이 오지 않아 자리를 놓친다.
+   위임 목록은 그 조문의 자리가 아니므로 세지 않는다. */
+function keepWhere() {
+  if (cur && delegation == null && !$("#reader").hidden) seenAt.set(cur.key, $("#rbody").scrollTop);
+}
+
 /* 조문 화면을 그리기만 한다. 히스토리는 go() 가 맡는다. */
 function showRec(key) {
   const r = BYKEY.get(key);
   if (!r) return;
+  keepWhere();
   cur = r;
   delegation = null;
   $("#rstar").hidden = false;
   const d = DOCS[r.d];
   $("#rwho").textContent = d.법령명;
-  $("#rno").textContent = r.no + (r.title ? "  " + r.title : "");
+  $("#rno").innerHTML = esc(r.no + (r.title ? "  " + r.title : "")) + '<span class="sw">▾</span>';
   $("#rstar").classList.toggle("on", saved.includes(key));
   $("#rstar").querySelector("svg").setAttribute("fill", saved.includes(key) ? "currentColor" : "none");
 
@@ -2131,11 +2167,13 @@ function showRec(key) {
   h += "</div>";
   $("#rbody").innerHTML = h;
   paintHL();
-  /* 이전·다음으로 옮겨도 찾던 낱말은 그대로 짚어 준다 */
-  if (!$("#findbar").hidden && findQ) { hlToks = [findQ]; paintHL(); showFind(0); }
-  $("#rbody").scrollTop = 0;
   $("#reader").hidden = false;
   document.body.style.overflow = "hidden";
+  /* 읽던 자리에서 이어 읽는다. 처음 여는 조문은 맨 위다.
+     화면이 숨어 있는 동안에는 스크롤이 먹지 않아, 켠 뒤에 옮긴다. */
+  $("#rbody").scrollTop = seenAt.get(key) || 0;
+  /* 이전·다음으로 옮겨도 찾던 낱말은 그대로 짚어 준다 */
+  if (!$("#findbar").hidden && findQ) { hlToks = [findQ]; paintHL(); showFind(0); }
 
   recent = [key].concat(recent.filter(k => k !== key)).slice(0, 30);
   store.set("recent", recent);
@@ -2228,6 +2266,8 @@ function syncSaveGo() {
 }
 
 function hideReader() {
+  keepWhere();
+  closeSwitch();
   if ($("#findbar") && !$("#findbar").hidden) closeFind();
   $("#reader").hidden = true;
   cur = null; delegation = null;
@@ -2559,6 +2599,49 @@ function openShare() {
 
 
 
+/* ---------------- 조문 바꿔 보기 ----------------
+   조문 하나를 보다 다른 것을 찾아보고, 다시 앞의 조문으로 돌아오는 일이 잦다.
+   지금까지는 뒤로가기를 여러 번 누르거나 조문 화면을 나갔다 다시 들어와야 했고,
+   돌아와도 맨 위에서 다시 내려가야 했다.
+
+   머리의 조문 이름을 누르면 방금까지 보던 조문과 저장해 둔 조문이 뜬다. 눌러서
+   바로 건너간다. 자리는 조문마다 기억해 두므로 읽던 줄에서 이어 읽는다.
+   건너뛰는 것도 한 걸음이라 뒤로가기로 그대로 되짚을 수 있다. */
+const SWITCH_N = 8;
+
+function switchRows() {
+  const seen = new Set(), rows = [];
+  const add = (key, mark) => {
+    const r = BYKEY.get(key);
+    if (!r || seen.has(key)) return;
+    seen.add(key);
+    rows.push({ r: r, mark: mark });
+  };
+  /* 최근 본 차례가 곧 오가는 차례다 — 바로 앞에 보던 조문이 늘 둘째 줄에 온다 */
+  recent.slice(0, SWITCH_N).forEach(k => add(k, "최근"));
+  saved.forEach(k => add(k, "저장"));
+  return rows;
+}
+
+function openSwitch() {
+  if (!cur) return;
+  $("#swlist").innerHTML = switchRows().map(({ r, mark }) => {
+    const d = DOCS[r.d], now = r.key === cur.key;
+    return '<button class="swrow' + (now ? " now" : "") + '"' +
+      (now ? "" : ' data-sw="' + r.key + '"') + '>' +
+      '<span class="badge l' + d.단계 + '">' + esc(badgeLabel(d)) + "</span>" +
+      '<span class="grow"><span class="t">' + esc(r.no + (r.title ? " " + r.title : "")) + "</span>" +
+      '<br><span class="s">' + esc(d.법령명) + "</span></span>" +
+      '<span class="mk">' + (now ? "지금" : mark) + "</span></button>";
+  }).join("") || '<p class="note">아직 본 조문이 없습니다.</p>';
+  $("#switch").hidden = false;
+}
+
+function closeSwitch() {
+  if ($("#switch")) $("#switch").hidden = true;
+}
+
+
 /* ---------------- 새 판 갈아타기 ----------------
    묻지 않고 조용히 갈아탄다. 받아 두기만 하고 기다리면 앱을 완전히 닫을 때까지
    옛 판을 쓰는데, 홈 화면 앱은 좀처럼 완전히 닫히지 않는다.
@@ -2702,6 +2785,14 @@ function start() {
   $("#findnext").onclick = () => showFind(findAt + 1);
   $("#findx").onclick = closeFind;
   $("#rshare").onclick = openShare;
+  $("#rno").onclick = () => ($("#switch").hidden ? openSwitch() : closeSwitch());
+  $("#swno").onclick = closeSwitch;
+  $("#switch").onclick = e => {
+    /* 바깥 어두운 데를 눌러도 닫힌다 — 폰에서는 이게 가장 손에 익은 닫기다 */
+    if (e.target === $("#switch")) { closeSwitch(); return; }
+    const b = e.target.closest("[data-sw]");
+    if (b) { closeSwitch(); openRec(b.dataset.sw, "switch"); }
+  };
   $("#rstar").onclick = () => {
     if (!cur) return;
     const had = saved.includes(cur.key);
@@ -2716,11 +2807,13 @@ function start() {
     syncSaveGo();
   };
   addEventListener("popstate", e => {
+    closeSwitch();
     const i = e.state && typeof e.state.i === "number" ? e.state.i : 0;
     applyView(views[i] || { t: "search", doc: null, key: null });
   });
   addEventListener("keydown", e => {
     /* 찾기 창이 열려 있으면 그것부터 닫는다 — 조문까지 함께 닫히면 놀란다 */
+    if (e.key === "Escape" && !$("#switch").hidden) { closeSwitch(); return; }
     if (e.key === "Escape" && !$("#findbar").hidden) { closeFind(); return; }
     if (e.key === "Escape" && !$("#reader").hidden) history.back();
     /* PC 에서는 밀 수 없으니 화살표로 넘긴다 */
